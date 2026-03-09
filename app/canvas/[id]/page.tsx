@@ -1,3 +1,5 @@
-export default function CanvasEditorPage({ params }: { params: { id: string } }) {
-  return <div>Canvas Editor: {params.id}</div>
+import { DayMarkApp } from '@/components/daymark/DayMarkApp'
+
+export default function CanvasEditorPage() {
+  return <DayMarkApp />
 }

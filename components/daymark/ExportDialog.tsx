@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useDayMark } from '@/lib/DayMarkContext'
 import { generateMemoryId } from '@/lib/types'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import {
   Dialog,
   DialogContent,
@@ -52,14 +52,10 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
       // Wait for UI to update
       await new Promise((r) => setTimeout(r, 100))
 
-      const result = await html2canvas(canvas, {
-        scale,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
+      const dataUrl = await toPng(canvas as HTMLElement, {
+        pixelRatio: scale,
+        skipAutoScale: true,
       })
-
-      const dataUrl = result.toDataURL('image/png')
       setExportedUrl(dataUrl)
 
       const memoryId = generateMemoryId(state.selectedDate || new Date())
@@ -83,7 +79,9 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
     const link = document.createElement('a')
     link.download = `daymark-${state.memoryId || 'memory'}.png`
     link.href = exportedUrl
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
   }, [exportedUrl, state.memoryId])
 
   const handleCopyLink = useCallback(async () => {
