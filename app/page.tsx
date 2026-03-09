@@ -1,5 +1,3 @@
-import { DayMarkApp } from '@/components/daymark/DayMarkApp'
-
-export default function Page() {
-  return <DayMarkApp />
+export default function LandingPage() {
+  return <div>Landing Page</div>
 }
