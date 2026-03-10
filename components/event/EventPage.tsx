@@ -22,6 +22,45 @@ interface EventPageProps {
   eventId: string
 }
 
+export interface PageTheme {
+  id: string
+  name: string
+  body: string     // outermost bg
+  wrapper: string  // canvas area bg
+  header: string   // header bg
+}
+
+export const PAGE_THEMES: PageTheme[] = [
+  {
+    id: 'milk-tea-default',
+    name: 'Milk Tea',
+    body:    '#f7f2eb',
+    wrapper: '#f0e8dc',
+    header:  '#fdf9f4',
+  },
+  {
+    id: 'peach-bloom',
+    name: 'Peach Bloom',
+    body:    '#faeae4',
+    wrapper: '#f5d8d0',
+    header:  '#fef4f0',
+  },
+  {
+    id: 'blush-petal',
+    name: 'Blush Petal',
+    body:    '#ffe8e8',
+    wrapper: '#ffd8d8',
+    header:  '#fff4f4',
+  },
+  {
+    id: 'rose-gold',
+    name: 'Rose Gold',
+    body:    '#f8ece0',
+    wrapper: '#f0d8c0',
+    header:  '#fdf8f0',
+  },
+]
+
 // Diamond logo SVG
 function DiamondLogo() {
   return (
@@ -57,6 +96,8 @@ export function EventPage({ eventId }: EventPageProps) {
   const metadata = useStorage((root) => root.metadata)
   const self = useSelf()
 
+  const [pageTheme, setPageTheme] = useState<PageTheme>(PAGE_THEMES[0])
+
   const [showPhotoBooth, setShowPhotoBooth] = useState(false)
   const [showSoloStrip, setShowSoloStrip] = useState(false)
   const [showExport, setShowExport] = useState(false)
@@ -72,12 +113,12 @@ export function EventPage({ eventId }: EventPageProps) {
   const { day, year } = formatDisplayDate(metadata.date)
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: '#f7f2eb' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: pageTheme.body }}>
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header
         className="shrink-0 flex items-center justify-between px-5 py-3 border-b z-20"
-        style={{ backgroundColor: '#fdf9f4', borderColor: '#e8ddd0' }}
+        style={{ backgroundColor: pageTheme.header, borderColor: '#e8ddd0' }}
       >
         {/* Left: logo + date */}
         <div className="flex items-center gap-4">
@@ -181,7 +222,7 @@ export function EventPage({ eventId }: EventPageProps) {
               className="flex-1 relative overflow-auto flex items-center justify-center p-4"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
-                backgroundColor: '#f0e8dc',
+                backgroundColor: pageTheme.wrapper,
               }}
             >
               <div className="relative">
@@ -256,6 +297,8 @@ export function EventPage({ eventId }: EventPageProps) {
                   onWashiColorChange={setActiveWashiColor}
                   activeHighlightColor={activeHighlightColor}
                   onHighlightColorChange={setActiveHighlightColor}
+                  pageTheme={pageTheme}
+                  onPageThemeChange={setPageTheme}
                 />
               )}
             </div>
