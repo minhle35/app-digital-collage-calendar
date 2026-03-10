@@ -3,9 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useBroadcastEvent, useEventListener, useMutation, useOthers, useSelf, useStorage } from '@/lib/liveblocks'
 import { PHOTO_LIBRARY_LIMIT } from '@/lib/event-types'
-import { generateElementId, type PhotoElement, type AnyElement, type CanvasTheme } from '@/lib/types'
+import { generateElementId, type PhotoElement, type CanvasTheme } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { X, Camera } from 'lucide-react'
+import { useBodySegmentation } from '@/hooks/useBodySegmentation'
+import { useSegmentedCanvas } from '@/hooks/useSegmentedCanvas'
+import { BOOTH_BACKDROPS, type BackdropPreset } from '@/lib/booth-backdrops'
 
 type BoothStage =
   | 'idle'           // waiting for the other person
@@ -18,14 +21,13 @@ type BoothStage =
 interface PhotoBoothOverlayProps {
   onClose: () => void
   selfName: string
-  canvasTheme: CanvasTheme
+  canvasTheme?: CanvasTheme
 }
 
 export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBoothOverlayProps) {
   const self = useSelf()
   const others = useOthers()
   const broadcast = useBroadcastEvent()
-  const elements = useStorage((root) => root.elements)
   const photoCount = useStorage((root) => root.photos?.length ?? 0)
   const atLimit = (photoCount ?? 0) >= PHOTO_LIBRARY_LIMIT
   const myId = self?.connectionId ?? -1
@@ -40,6 +42,13 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
   const [promptFrom, setPromptFrom] = useState<{ id: number; name: string } | null>(null)
   const [initiatorId, setInitiatorId] = useState<number | null>(null)
   const [camError, setCamError] = useState(false)
+  const [selectedBackdrop, setSelectedBackdrop] = useState<BackdropPreset>(BOOTH_BACKDROPS[0])
+
+  // Body segmentation — lazy loads TF.js + MediaPipe model
+  const { segmenterRef, modelReady, modelFailed } = useBodySegmentation(!camError)
+
+  // RAF loop: draws segmented (background-removed) frames onto a canvas
+  const segmentedCanvasRef = useSegmentedCanvas(videoRef, segmenterRef, !camError)
 
   const hasOthers = others.length > 0
 
@@ -55,8 +64,13 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
     return () => { streamRef.current?.getTracks().forEach((t) => t.stop()) }
   }, [])
 
-  // Capture a frame from the webcam into a base64 PNG
+  // Capture a frame from the segmented canvas (transparent PNG) or raw video as fallback
   const captureFrame = useCallback((): string | null => {
+    const segCanvas = segmentedCanvasRef.current
+    if (segCanvas && segCanvas.width > 0) {
+      return segCanvas.toDataURL('image/png')
+    }
+    // Fallback: raw video frame
     const video = videoRef.current
     if (!video) return null
     const canvas = document.createElement('canvas')
@@ -64,16 +78,18 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
     canvas.height = video.videoHeight || 480
     canvas.getContext('2d')!.drawImage(video, 0, 0)
     return canvas.toDataURL('image/jpeg', 0.85)
-  }, [])
+  }, [segmentedCanvasRef])
 
-  // Stitch two frames side-by-side with white polaroid border
-  const stitchFrames = useCallback((frameA: string, frameB: string): Promise<string> => {
+  // Stitch two cutout frames side-by-side over the chosen backdrop
+  const stitchWithBackdrop = useCallback((frameA: string, frameB: string): Promise<string> => {
     return new Promise((resolve) => {
       const imgA = new window.Image()
       const imgB = new window.Image()
       let loaded = 0
+
       const tryStitch = () => {
         if (++loaded < 2) return
+
         const pad = 16
         const w = 320
         const h = Math.round(w * (imgA.height / imgA.width))
@@ -81,19 +97,23 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
         canvas.width = w * 2 + pad * 3
         canvas.height = h + pad * 2
         const ctx = canvas.getContext('2d')!
-        ctx.fillStyle = '#fefcf8'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        // slight drop shadow between frames
-        ctx.shadowColor = 'rgba(0,0,0,0.08)'
-        ctx.shadowBlur = 8
+
+        // 1. Fill backdrop
+        selectedBackdrop.render(ctx, canvas.width, canvas.height)
+
+        // 2. Composite transparent cutouts on top (source-over preserves alpha)
+        ctx.shadowColor = 'rgba(0,0,0,0.12)'
+        ctx.shadowBlur = 10
         ctx.drawImage(imgA, pad, pad, w, h)
         ctx.drawImage(imgB, pad * 2 + w, pad, w, h)
+
         resolve(canvas.toDataURL('image/png'))
       }
+
       imgA.onload = tryStitch; imgA.src = frameA
       imgB.onload = tryStitch; imgB.src = frameB
     })
-  }, [])
+  }, [selectedBackdrop])
 
   // Add final stitched photo to the shared canvas
   const addMutation = useMutation(({ storage }, src: string, width: number, height: number) => {
@@ -108,7 +128,6 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
       locked: false, src, filter: 'none',
     }
     list.push(el)
-    // Save to photo library so collaborators can recover the photo booth shot
     const photos = storage.get('photos')
     const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
     if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
@@ -116,9 +135,8 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
 
   const placeOnCanvas = useCallback(async () => {
     if (!myFrame || !theirFrame) return
-    // Initiator stitches; non-initiator just waits for the canvas to update
     if (initiatorId !== myId) return
-    const stitched = await stitchFrames(
+    const stitched = await stitchWithBackdrop(
       initiatorId === myId ? myFrame : theirFrame,
       initiatorId === myId ? theirFrame : myFrame,
     )
@@ -126,7 +144,7 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
     img.onload = () => addMutation(stitched, img.width / 2, img.height / 2)
     img.src = stitched
     onClose()
-  }, [myFrame, theirFrame, initiatorId, myId, stitchFrames, addMutation, onClose])
+  }, [myFrame, theirFrame, initiatorId, myId, stitchWithBackdrop, addMutation, onClose])
 
   // Auto-place when both frames are received
   useEffect(() => {
@@ -216,7 +234,30 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
               <p className="font-mono text-sm">Camera access denied</p>
             </div>
           ) : (
-            <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
+            <>
+              {/* Hidden video element — source for the segmentation loop */}
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="hidden"
+              />
+              {/* Segmented canvas — mirrors for natural selfie feel */}
+              <canvas
+                ref={segmentedCanvasRef}
+                className="w-full h-full object-cover scale-x-[-1]"
+                style={{ backgroundColor: selectedBackdrop.preview.startsWith('linear') ? 'transparent' : selectedBackdrop.preview }}
+              />
+            </>
+          )}
+
+          {/* Model loading badge */}
+          {!camError && !modelReady && !modelFailed && (
+            <div className="absolute bottom-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="font-mono text-[9px] text-white/80">Loading background removal…</span>
+            </div>
           )}
 
           {/* Countdown overlay */}
@@ -237,8 +278,30 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
           )}
         </div>
 
+        {/* Backdrop picker */}
+        <div className="px-6 pt-3 pb-0 flex items-center gap-2">
+          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">Scene</span>
+          <div className="flex gap-1.5">
+            {BOOTH_BACKDROPS.map((b) => (
+              <button
+                key={b.id}
+                title={b.name}
+                onClick={() => setSelectedBackdrop(b)}
+                className={cn(
+                  'w-7 h-7 rounded-md border-2 transition-all',
+                  selectedBackdrop.id === b.id
+                    ? 'border-accent ring-1 ring-accent scale-110'
+                    : 'border-transparent hover:border-border'
+                )}
+                style={{ background: b.preview }}
+              />
+            ))}
+          </div>
+          <span className="font-mono text-[9px] text-muted-foreground ml-auto">{selectedBackdrop.name}</span>
+        </div>
+
         {/* Controls area */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-4 space-y-4">
           <h2 className="font-serif text-lg text-center">Photo together</h2>
 
           {/* No one else here */}
@@ -249,7 +312,6 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
             </div>
           )}
 
-          {/* Idle — ready to go */}
           {atLimit && (
             <p className="font-mono text-xs text-center" style={{ color: '#c05050' }}>
               Photo library full ({PHOTO_LIBRARY_LIMIT}/{PHOTO_LIBRARY_LIMIT}).<br />
@@ -274,7 +336,6 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
             </div>
           )}
 
-          {/* Waiting for other person to accept */}
           {stage === 'ready-sent' && (
             <div className="text-center space-y-1">
               <p className="font-mono text-sm">Waiting for the other person…</p>
@@ -286,7 +347,6 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
             </div>
           )}
 
-          {/* Prompt — they hit ready first */}
           {stage === 'prompt' && promptFrom && (
             <div className="text-center space-y-4">
               <p className="font-mono text-sm">
@@ -303,14 +363,12 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
             </div>
           )}
 
-          {/* Countdown — no controls, just watch */}
           {stage === 'countdown' && (
             <p className="font-mono text-sm text-center text-muted-foreground">
               Get ready… smile!
             </p>
           )}
 
-          {/* Strip — placing on canvas */}
           {stage === 'strip' && (
             <div className="text-center space-y-2">
               <p className="font-mono text-sm">✦ Got it! Placing on canvas…</p>
