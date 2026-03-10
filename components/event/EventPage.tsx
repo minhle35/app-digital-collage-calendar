@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { MetadataPanel } from './MetadataPanel'
+import { EventStickersPanel } from './EventStickersPanel'
 import { EventCanvas } from './EventCanvas'
 import { EventToolbar } from './EventToolbar'
 import { PresenceBar } from './PresenceBar'
@@ -9,8 +10,9 @@ import { ShareButton } from './ShareButton'
 import { LiveCursors } from './LiveCursors'
 import { WebcamTile } from './WebcamTile'
 import { PhotoBoothOverlay } from './PhotoBoothOverlay'
-import { useStorage } from '@/lib/liveblocks'
-import { useSelf } from '@/lib/liveblocks'
+import { EventPhotoboothModal } from './EventPhotoboothModal'
+import { useStorage, useSelf } from '@/lib/liveblocks'
+import { cn } from '@/lib/utils'
 
 interface EventPageProps {
   eventId: string
@@ -20,10 +22,12 @@ export function EventPage({ eventId }: EventPageProps) {
   const metadata = useStorage((root) => root.metadata)
   const self = useSelf()
   const [showPhotoBooth, setShowPhotoBooth] = useState(false)
+  const [showSoloStrip, setShowSoloStrip] = useState(false)
   const [activeTool, setActiveTool] = useState<string>('select')
   const [activeWashiColor, setActiveWashiColor] = useState('#f4c2c2')
   const [activeHighlightColor, setActiveHighlightColor] = useState('#fef08a')
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+  const [rightTab, setRightTab] = useState<'stickers' | 'details'>('stickers')
 
   if (!metadata) return null
 
@@ -42,6 +46,12 @@ export function EventPage({ eventId }: EventPageProps) {
         <div className="flex items-center gap-2 shrink-0">
           <PresenceBar />
           <ShareButton />
+          <button
+            onClick={() => setShowSoloStrip(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground font-mono text-xs font-medium hover:bg-secondary/80 transition-colors"
+          >
+            🎞️ Solo strip
+          </button>
           <button
             onClick={() => setShowPhotoBooth(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent text-accent-foreground font-mono text-xs font-medium hover:bg-accent/90 transition-colors"
@@ -78,16 +88,49 @@ export function EventPage({ eventId }: EventPageProps) {
         </div>
 
         {/* Right panel */}
-        <MetadataPanel
-          activeWashiColor={activeWashiColor}
-          onWashiColorChange={setActiveWashiColor}
-          activeHighlightColor={activeHighlightColor}
-          onHighlightColorChange={setActiveHighlightColor}
-        />
+        <aside className="w-[280px] border-l border-border bg-card flex flex-col shrink-0 overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b border-border shrink-0">
+            {(['stickers', 'details'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setRightTab(tab)}
+                className={cn(
+                  'flex-1 py-2 font-mono text-xs transition-colors',
+                  rightTab === tab
+                    ? 'text-foreground border-b-2 border-accent'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {tab === 'stickers' ? 'Stickers' : 'Details'}
+              </button>
+            ))}
+          </div>
+
+          {/* Panel content */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {rightTab === 'stickers' ? (
+              <EventStickersPanel />
+            ) : (
+              <MetadataPanel
+                activeWashiColor={activeWashiColor}
+                onWashiColorChange={setActiveWashiColor}
+                activeHighlightColor={activeHighlightColor}
+                onHighlightColorChange={setActiveHighlightColor}
+              />
+            )}
+          </div>
+        </aside>
       </div>
 
       {/* Live webcam tile */}
       <WebcamTile />
+
+      {/* Solo 4-shot strip */}
+      <EventPhotoboothModal
+        open={showSoloStrip}
+        onOpenChange={setShowSoloStrip}
+      />
 
       {/* Photo booth overlay */}
       {showPhotoBooth && (
