@@ -11,6 +11,7 @@ import { LiveCursors } from './LiveCursors'
 import { WebcamTile } from './WebcamTile'
 import { PhotoBoothOverlay } from './PhotoBoothOverlay'
 import { EventPhotoboothModal } from './EventPhotoboothModal'
+import { EventExportOverlay } from './EventExportOverlay'
 import { useStorage, useSelf } from '@/lib/liveblocks'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,7 @@ export function EventPage({ eventId }: EventPageProps) {
   const self = useSelf()
   const [showPhotoBooth, setShowPhotoBooth] = useState(false)
   const [showSoloStrip, setShowSoloStrip] = useState(false)
+  const [showExport, setShowExport] = useState(false)
   const [activeTool, setActiveTool] = useState<string>('select')
   const [activeWashiColor, setActiveWashiColor] = useState('#f4c2c2')
   const [activeHighlightColor, setActiveHighlightColor] = useState('#fef08a')
@@ -46,6 +48,12 @@ export function EventPage({ eventId }: EventPageProps) {
         <div className="flex items-center gap-2 shrink-0">
           <PresenceBar />
           <ShareButton />
+          <button
+            onClick={() => setShowExport(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground font-mono text-xs font-medium hover:bg-secondary/80 transition-colors"
+          >
+            ⬇ Download
+          </button>
           <button
             onClick={() => setShowSoloStrip(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground font-mono text-xs font-medium hover:bg-secondary/80 transition-colors"
@@ -125,6 +133,12 @@ export function EventPage({ eventId }: EventPageProps) {
 
       {/* Live webcam tile */}
       <WebcamTile />
+
+      {/* Export / download preview */}
+      <EventExportOverlay
+        open={showExport}
+        onOpenChange={setShowExport}
+      />
 
       {/* Solo 4-shot strip */}
       <EventPhotoboothModal
