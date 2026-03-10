@@ -3,6 +3,7 @@
 import { useCallback } from 'react'
 import { useMutation, useStorage } from '@/lib/liveblocks'
 import { generateElementId, type TextElement, type AnyElement, type PhotoElement } from '@/lib/types'
+import { PHOTO_LIBRARY_LIMIT } from '@/lib/event-types'
 import { cn } from '@/lib/utils'
 import {
   MousePointer2, Type, Pen, Highlighter, Image, Trash2,
@@ -27,6 +28,8 @@ interface EventToolbarProps {
 
 export function EventToolbar({ activeTool, onToolChange, selectedElementId, onDeselect }: EventToolbarProps) {
   const elements = useStorage((root) => root.elements)
+  const photoCount = useStorage((root) => root.photos?.length ?? 0)
+  const atPhotoLimit = (photoCount ?? 0) >= PHOTO_LIBRARY_LIMIT
 
   const addText = useMutation(({ storage }) => {
     const list = storage.get('elements')
@@ -43,6 +46,8 @@ export function EventToolbar({ activeTool, onToolChange, selectedElementId, onDe
   }, [])
 
   const addPhotoMutation = useMutation(({ storage }, src: string, width: number, height: number) => {
+    const photos = storage.get('photos')
+    if (photos.toArray().length >= PHOTO_LIBRARY_LIMIT) return
     const id = generateElementId()
     const list = storage.get('elements')
     const el: PhotoElement = {
@@ -54,8 +59,6 @@ export function EventToolbar({ activeTool, onToolChange, selectedElementId, onDe
       src, filter: 'none',
     }
     list.push(el)
-    // Save to photo library (dedup by id)
-    const photos = storage.get('photos')
     const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
     if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
   }, [])
@@ -131,7 +134,11 @@ export function EventToolbar({ activeTool, onToolChange, selectedElementId, onDe
         </ToolBtn>
       ))}
 
-      <ToolBtn onClick={addPhoto} title="Add photo">
+      <ToolBtn
+        onClick={addPhoto}
+        title={atPhotoLimit ? `Photo library full (${PHOTO_LIBRARY_LIMIT}/${PHOTO_LIBRARY_LIMIT}) — delete a photo first` : 'Add photo'}
+        disabled={atPhotoLimit}
+      >
         <Image className="w-4 h-4" />
       </ToolBtn>
 
@@ -157,24 +164,28 @@ export function EventToolbar({ activeTool, onToolChange, selectedElementId, onDe
   )
 }
 
-function ToolBtn({ children, active, onClick, title, danger }: {
+function ToolBtn({ children, active, onClick, title, danger, disabled }: {
   children: React.ReactNode
   active?: boolean
   onClick: () => void
   title: string
   danger?: boolean
+  disabled?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
+      disabled={disabled}
       className={cn(
         'w-9 h-9 flex items-center justify-center rounded-md transition-all duration-150',
-        active
-          ? 'bg-accent text-accent-foreground'
-          : danger
-            ? 'text-destructive hover:bg-destructive/10'
-            : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
+        disabled
+          ? 'opacity-30 cursor-not-allowed'
+          : active
+            ? 'bg-accent text-accent-foreground'
+            : danger
+              ? 'text-destructive hover:bg-destructive/10'
+              : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
       )}
     >
       {children}

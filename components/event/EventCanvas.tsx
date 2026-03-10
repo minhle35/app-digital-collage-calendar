@@ -11,6 +11,7 @@ import {
 } from '@/lib/types'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { PHOTO_LIBRARY_LIMIT } from '@/lib/event-types'
 
 const CANVAS_WIDTH = 820
 const CANVAS_HEIGHT = 620
@@ -41,6 +42,7 @@ export function EventCanvas({
 }: EventCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const elements = useStorage((root) => root.elements)
+  const photoCount = useStorage((root) => root.photos?.length ?? 0)
   const updateMyPresence = useUpdateMyPresence()
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -75,7 +77,7 @@ export function EventCanvas({
 
   const savePhotoToLibrary = useMutation(({ storage }, id: string, src: string) => {
     const photos = storage.get('photos')
-    // Deduplicate by id
+    if (photos.toArray().length >= PHOTO_LIBRARY_LIMIT) return
     const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
     if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
   }, [])
@@ -239,7 +241,7 @@ export function EventCanvas({
     }
 
     const files = e.dataTransfer.files
-    if (files.length > 0 && files[0].type.startsWith('image/')) {
+    if (files.length > 0 && files[0].type.startsWith('image/') && (photoCount ?? 0) < PHOTO_LIBRARY_LIMIT) {
       const reader = new FileReader()
       reader.onload = (ev) => {
         const img = new window.Image()

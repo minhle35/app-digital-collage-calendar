@@ -48,6 +48,8 @@ export const DEFAULT_METADATA: EventMetadata = {
 }
 
 // ===== Photo Library =====
+export const PHOTO_LIBRARY_LIMIT = 5
+
 export interface SavedPhoto {
   id: string
   src: string    // base64 data URL

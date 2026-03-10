@@ -3,7 +3,8 @@
 import { useCallback } from 'react'
 import { useStorage, useMutation } from '@/lib/liveblocks'
 import { generateElementId, type PhotoElement } from '@/lib/types'
-import type { SavedPhoto } from '@/lib/event-types'
+import { PHOTO_LIBRARY_LIMIT, type SavedPhoto } from '@/lib/event-types'
+import { Trash2 } from 'lucide-react'
 
 const CANVAS_W = 820
 const CANVAS_H = 620
@@ -17,9 +18,11 @@ function parsePhotos(raw: readonly string[]): SavedPhoto[] {
 export function EventPhotosPanel() {
   const rawPhotos = useStorage((root) => root.photos)
   const photos = parsePhotos(rawPhotos ?? [])
+  const atLimit = photos.length >= PHOTO_LIBRARY_LIMIT
 
   const savePhoto = useMutation(({ storage }, photo: SavedPhoto) => {
     const list = storage.get('photos')
+    if (list.toArray().length >= PHOTO_LIBRARY_LIMIT) return
     const exists = list.toArray().some((s) => { try { return JSON.parse(s).id === photo.id } catch { return false } })
     if (!exists) list.push(JSON.stringify(photo))
   }, [])
@@ -52,8 +55,8 @@ export function EventPhotosPanel() {
     if (idx !== -1) list.delete(idx)
   }, [])
 
-  // useMutation returns a stable ref — safe to call inside FileReader callbacks
   const handleUpload = useCallback(() => {
+    if (atLimit) return
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -73,25 +76,48 @@ export function EventPhotosPanel() {
       })
     }
     input.click()
-  }, [savePhoto])
+  }, [atLimit, savePhoto])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div
-        className="shrink-0 flex items-center justify-between px-3 py-2.5 border-b"
+        className="shrink-0 px-3 py-2.5 border-b space-y-2"
         style={{ borderColor: '#e8ddd0' }}
       >
-        <span className="font-mono text-[10px] tracking-widest uppercase" style={{ color: '#b0a090' }}>
-          {photos.length} photo{photos.length !== 1 ? 's' : ''}
-        </span>
-        <button
-          onClick={handleUpload}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full font-mono text-[10px] font-medium text-white transition-colors"
-          style={{ backgroundColor: '#c8a874' }}
-        >
-          + Upload
-        </button>
+        {/* Counter + upload */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[10px]" style={{ color: atLimit ? '#c05050' : '#b0a090' }}>
+              {photos.length}/{PHOTO_LIBRARY_LIMIT} photos
+            </span>
+            {/* Slot indicators */}
+            <div className="flex gap-0.5">
+              {Array.from({ length: PHOTO_LIBRARY_LIMIT }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: i < photos.length ? (atLimit ? '#c05050' : '#c8a874') : '#ddd4c0' }}
+                />
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={handleUpload}
+            disabled={atLimit}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full font-mono text-[10px] font-medium text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ backgroundColor: '#c8a874' }}
+          >
+            + Upload
+          </button>
+        </div>
+
+        {/* Limit warning */}
+        {atLimit && (
+          <p className="font-mono text-[9px] leading-relaxed" style={{ color: '#c05050' }}>
+            Limit reached. Delete a photo permanently to free a slot.
+          </p>
+        )}
       </div>
 
       {/* Grid */}
@@ -108,8 +134,8 @@ export function EventPhotosPanel() {
             {photos.map((photo) => (
               <div
                 key={photo.id}
-                className="group relative rounded-lg overflow-hidden border aspect-square"
-                style={{ borderColor: '#ede4d8' }}
+                className="group relative rounded-lg overflow-hidden border"
+                style={{ borderColor: '#ede4d8', aspectRatio: '1' }}
               >
                 <img
                   src={photo.src}
@@ -117,10 +143,21 @@ export function EventPhotosPanel() {
                   className="w-full h-full object-cover"
                   draggable={false}
                 />
-                {/* Hover overlay */}
+
+                {/* Always-visible delete button */}
+                <button
+                  onClick={() => deleteFromLibrary(photo.id)}
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ backgroundColor: 'rgba(180,40,40,0.85)' }}
+                  title="Delete permanently"
+                >
+                  <Trash2 className="w-2.5 h-2.5 text-white" />
+                </button>
+
+                {/* Hover overlay — add to canvas */}
                 <div
-                  className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+                  className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55) 40%, transparent)' }}
                 >
                   <button
                     onClick={() => addToCanvas(photo)}
@@ -128,12 +165,6 @@ export function EventPhotosPanel() {
                     style={{ backgroundColor: '#c8a874' }}
                   >
                     + Canvas
-                  </button>
-                  <button
-                    onClick={() => deleteFromLibrary(photo.id)}
-                    className="font-mono text-[10px] text-white/70 hover:text-white transition-colors"
-                  >
-                    Remove
                   </button>
                 </div>
               </div>

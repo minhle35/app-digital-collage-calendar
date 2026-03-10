@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useBroadcastEvent, useEventListener, useMutation, useOthers, useSelf, useStorage } from '@/lib/liveblocks'
+import { PHOTO_LIBRARY_LIMIT } from '@/lib/event-types'
 import { generateElementId, type PhotoElement, type AnyElement, type CanvasTheme } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { X, Camera } from 'lucide-react'
@@ -25,6 +26,8 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
   const others = useOthers()
   const broadcast = useBroadcastEvent()
   const elements = useStorage((root) => root.elements)
+  const photoCount = useStorage((root) => root.photos?.length ?? 0)
+  const atLimit = (photoCount ?? 0) >= PHOTO_LIBRARY_LIMIT
   const myId = self?.connectionId ?? -1
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -247,6 +250,13 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
           )}
 
           {/* Idle — ready to go */}
+          {atLimit && (
+            <p className="font-mono text-xs text-center" style={{ color: '#c05050' }}>
+              Photo library full ({PHOTO_LIBRARY_LIMIT}/{PHOTO_LIBRARY_LIMIT}).<br />
+              Delete a photo in the Photos tab first.
+            </p>
+          )}
+
           {hasOthers && stage === 'idle' && (
             <div className="flex flex-col items-center gap-3">
               <p className="font-mono text-xs text-muted-foreground text-center">
@@ -256,7 +266,8 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
               </p>
               <button
                 onClick={handleReady}
-                className="px-6 py-2.5 rounded-xl bg-accent text-accent-foreground font-mono text-sm hover:bg-accent/90 transition-colors"
+                disabled={atLimit}
+                className="px-6 py-2.5 rounded-xl bg-accent text-accent-foreground font-mono text-sm hover:bg-accent/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 I'm ready 📸
               </button>

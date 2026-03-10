@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { useMutation, useStorage } from '@/lib/liveblocks'
+import { PHOTO_LIBRARY_LIMIT } from '@/lib/event-types'
 import { generateElementId, type PhotoElement } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { X, Camera, ImagePlus, RotateCcw } from 'lucide-react'
@@ -41,12 +42,16 @@ const FRAME_SLIDE_CSS = `
 
 export function EventPhotoboothModal({ open, onOpenChange }: EventPhotoboothModalProps) {
   const elements = useStorage((root) => root.elements)
+  const photoCount = useStorage((root) => root.photos?.length ?? 0)
+  const atLimit = (photoCount ?? 0) >= PHOTO_LIBRARY_LIMIT
+
   const addElement = useMutation(({ storage }, element: PhotoElement) => {
     storage.get('elements').push(element)
   }, [])
 
   const savePhotoToLibrary = useMutation(({ storage }, id: string, src: string) => {
     const photos = storage.get('photos')
+    if (photos.toArray().length >= PHOTO_LIBRARY_LIMIT) return
     const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
     if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
   }, [])
@@ -312,7 +317,7 @@ export function EventPhotoboothModal({ open, onOpenChange }: EventPhotoboothModa
               <div className="flex gap-3">
                 <Button
                   onClick={runSequence}
-                  disabled={captureState === 'countdown' || captureState === 'capturing'}
+                  disabled={captureState === 'countdown' || captureState === 'capturing' || atLimit}
                   className="font-mono text-sm px-8 py-2 h-auto"
                 >
                   {captureState === 'idle' && frames.length === 0 ? 'Start' : 'Retake'}
@@ -331,8 +336,15 @@ export function EventPhotoboothModal({ open, onOpenChange }: EventPhotoboothModa
               </div>
             )}
 
+            {atLimit && (
+              <p className="font-mono text-xs text-center" style={{ color: '#c05050' }}>
+                Photo library full ({PHOTO_LIBRARY_LIMIT}/{PHOTO_LIBRARY_LIMIT}).<br />
+                Delete a photo in the Photos tab first.
+              </p>
+            )}
+
             {captureState === 'done' && (
-              <Button onClick={placeStrip} className="font-mono text-sm px-8 py-2 h-auto">
+              <Button onClick={placeStrip} disabled={atLimit} className="font-mono text-sm px-8 py-2 h-auto">
                 Place on canvas
               </Button>
             )}
