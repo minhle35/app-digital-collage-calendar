@@ -45,6 +45,12 @@ export function EventPhotoboothModal({ open, onOpenChange }: EventPhotoboothModa
     storage.get('elements').push(element)
   }, [])
 
+  const savePhotoToLibrary = useMutation(({ storage }, id: string, src: string) => {
+    const photos = storage.get('photos')
+    const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
+    if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
+  }, [])
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -174,6 +180,7 @@ export function EventPhotoboothModal({ open, onOpenChange }: EventPhotoboothModa
         filter: 'none',
       }
       addElement(el)
+      savePhotoToLibrary(el.id, dataUrl)
       setTimeout(() => {
         onOpenChange(false)
         setPlacingReveal(false)
@@ -192,7 +199,7 @@ export function EventPhotoboothModal({ open, onOpenChange }: EventPhotoboothModa
         }
       }
     })
-  }, [frames, elements, addElement, onOpenChange])
+  }, [frames, elements, addElement, savePhotoToLibrary, onOpenChange])
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, TOTAL_SHOTS)

@@ -94,9 +94,10 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
 
   // Add final stitched photo to the shared canvas
   const addMutation = useMutation(({ storage }, src: string, width: number, height: number) => {
+    const id = generateElementId()
     const list = storage.get('elements')
     const el: PhotoElement = {
-      id: generateElementId(), type: 'photo',
+      id, type: 'photo',
       x: 80, y: 80,
       width, height,
       rotation: (Math.random() - 0.5) * 3,
@@ -104,6 +105,10 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
       locked: false, src, filter: 'none',
     }
     list.push(el)
+    // Save to photo library so collaborators can recover the photo booth shot
+    const photos = storage.get('photos')
+    const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
+    if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
   }, [])
 
   const placeOnCanvas = useCallback(async () => {
