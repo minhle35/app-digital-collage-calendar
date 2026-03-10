@@ -11,9 +11,12 @@ import {
 } from '@/lib/types'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { PHOTO_LIBRARY_LIMIT } from '@/lib/event-types'
 
 const CANVAS_WIDTH = 820
 const CANVAS_HEIGHT = 620
+const ELEMENTS_LIMIT = 60 // Liveblocks free tier: cap storage growth per room
+const PHOTO_MAX_PX = 800  // Resize dropped photos to stay under 2 MB LiveList item limit
 
 const SPRING_KEYFRAMES = `
 @keyframes spring-pop {
@@ -56,7 +59,9 @@ export function EventCanvas({
 
   // Liveblocks mutations
   const addElement = useMutation(({ storage }, element: AnyElement) => {
-    storage.get('elements').push(element)
+    const list = storage.get('elements')
+    if (list.toArray().length >= ELEMENTS_LIMIT) return
+    list.push(element)
   }, [])
 
   const updateElement = useMutation(({ storage }, id: string, updates: Partial<AnyElement>) => {
@@ -71,6 +76,23 @@ export function EventCanvas({
     const list = storage.get('elements')
     const idx = list.findIndex((el) => el.id === id)
     if (idx !== -1) list.delete(idx)
+  }, [])
+
+  const addPhotoElement = useMutation(({ storage }, id: string, src: string, x: number, y: number, w: number, h: number) => {
+    const photos = storage.get('photos')
+    if (photos.toArray().length >= PHOTO_LIBRARY_LIMIT) return
+    const list = storage.get('elements')
+    if (list.toArray().length >= ELEMENTS_LIMIT) return
+    const el: PhotoElement = {
+      id, type: 'photo',
+      x, y, width: w, height: h,
+      rotation: (Math.random() - 0.5) * 4,
+      zIndex: list.toArray().length,
+      locked: false, src, filter: 'none',
+    }
+    list.push(el)
+    const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
+    if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
   }, [])
 
   // Spring pop for newly added stickers
@@ -235,22 +257,24 @@ export function EventCanvas({
     if (files.length > 0 && files[0].type.startsWith('image/')) {
       const reader = new FileReader()
       reader.onload = (ev) => {
+        const raw = ev.target?.result as string
         const img = new window.Image()
         img.onload = () => {
-          const w = 220
-          addElement({
-            id: generateElementId(), type: 'photo',
-            x: Math.max(0, x), y: Math.max(0, y),
-            width: w, height: w / (img.width / img.height),
-            rotation: (Math.random() - 0.5) * 4, zIndex: elements?.length ?? 0, locked: false,
-            src: ev.target?.result as string, filter: 'none',
-          } as PhotoElement)
+          // Resize + compress before storing to stay within 2 MB LiveList item limit
+          const scale = Math.min(1, PHOTO_MAX_PX / Math.max(img.width, img.height))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+          const src = canvas.toDataURL('image/jpeg', 0.75)
+          const displayW = 220
+          addPhotoElement(generateElementId(), src, Math.max(0, x), Math.max(0, y), displayW, displayW / (canvas.width / canvas.height))
         }
-        img.src = ev.target?.result as string
+        img.src = raw
       }
       reader.readAsDataURL(files[0])
     }
-  }, [addElement, elements])
+  }, [addElement, addPhotoElement, elements])
 
   const renderElement = (el: AnyElement) => {
     const isSelected = selectedElementId === el.id
@@ -300,7 +324,7 @@ export function EventCanvas({
             ? <textarea autoFocus value={editingText} onChange={(e) => setEditingText(e.target.value)} onBlur={commitTextEdit} onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null); if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitTextEdit() } }} className="w-full h-full resize-none bg-transparent outline-none border-none" style={{ fontFamily: (el as TextElement).fontFamily, fontSize: (el as TextElement).fontSize, fontWeight: (el as TextElement).fontWeight, color: (el as TextElement).color, textAlign: (el as TextElement).textAlign }} />
             : <div className="w-full h-full flex items-center justify-center break-words leading-snug" style={{ fontFamily: (el as TextElement).fontFamily, fontSize: (el as TextElement).fontSize, fontWeight: (el as TextElement).fontWeight, color: (el as TextElement).color, textAlign: (el as TextElement).textAlign }}>{(el as TextElement).content}</div>
         )}
-        {isSelected && !el.locked && el.type !== 'washi' && el.type !== 'highlight' && (
+        {isSelected && !el.locked && (
           (['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
             <div key={corner}
               className={cn('absolute w-3 h-3 bg-accent rounded-full border-2 border-background',
