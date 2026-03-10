@@ -27,27 +27,31 @@ export function EventPhotosPanel() {
     if (!exists) list.push(JSON.stringify(photo))
   }, [])
 
-  const addToCanvas = useMutation(({ storage }, photo: SavedPhoto) => {
+  const addToCanvasMutation = useMutation(({ storage }, src: string, width: number, height: number) => {
+    const el: PhotoElement = {
+      id: generateElementId(),
+      type: 'photo',
+      x: CANVAS_W * 0.1 + Math.random() * (CANVAS_W * 0.6),
+      y: CANVAS_H * 0.1 + Math.random() * (CANVAS_H * 0.6),
+      width,
+      height,
+      rotation: (Math.random() - 0.5) * 4,
+      zIndex: storage.get('elements').toArray().length,
+      locked: false,
+      src,
+      filter: 'none',
+    }
+    storage.get('elements').push(el)
+  }, [])
+
+  const addToCanvas = useCallback((photo: SavedPhoto) => {
     const img = new window.Image()
     img.onload = () => {
       const w = 220
-      const el: PhotoElement = {
-        id: generateElementId(),
-        type: 'photo',
-        x: CANVAS_W * 0.1 + Math.random() * (CANVAS_W * 0.6),
-        y: CANVAS_H * 0.1 + Math.random() * (CANVAS_H * 0.6),
-        width: w,
-        height: w / (img.width / img.height),
-        rotation: (Math.random() - 0.5) * 4,
-        zIndex: storage.get('elements').toArray().length,
-        locked: false,
-        src: photo.src,
-        filter: 'none',
-      }
-      storage.get('elements').push(el)
+      addToCanvasMutation(photo.src, w, w / (img.width / img.height))
     }
     img.src = photo.src
-  }, [])
+  }, [addToCanvasMutation])
 
   const deleteFromLibrary = useMutation(({ storage }, id: string) => {
     const list = storage.get('photos')

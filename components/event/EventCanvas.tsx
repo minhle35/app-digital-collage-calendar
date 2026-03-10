@@ -42,7 +42,6 @@ export function EventCanvas({
 }: EventCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const elements = useStorage((root) => root.elements)
-  const photoCount = useStorage((root) => root.photos?.length ?? 0)
   const updateMyPresence = useUpdateMyPresence()
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -75,9 +74,18 @@ export function EventCanvas({
     if (idx !== -1) list.delete(idx)
   }, [])
 
-  const savePhotoToLibrary = useMutation(({ storage }, id: string, src: string) => {
+  const addPhotoElement = useMutation(({ storage }, id: string, src: string, x: number, y: number, w: number, h: number) => {
     const photos = storage.get('photos')
     if (photos.toArray().length >= PHOTO_LIBRARY_LIMIT) return
+    const list = storage.get('elements')
+    const el: PhotoElement = {
+      id, type: 'photo',
+      x, y, width: w, height: h,
+      rotation: (Math.random() - 0.5) * 4,
+      zIndex: list.toArray().length,
+      locked: false, src, filter: 'none',
+    }
+    list.push(el)
     const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
     if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
   }, [])
@@ -241,7 +249,7 @@ export function EventCanvas({
     }
 
     const files = e.dataTransfer.files
-    if (files.length > 0 && files[0].type.startsWith('image/') && (photoCount ?? 0) < PHOTO_LIBRARY_LIMIT) {
+    if (files.length > 0 && files[0].type.startsWith('image/')) {
       const reader = new FileReader()
       reader.onload = (ev) => {
         const img = new window.Image()
@@ -249,20 +257,13 @@ export function EventCanvas({
           const w = 220
           const id = generateElementId()
           const src = ev.target?.result as string
-          addElement({
-            id, type: 'photo',
-            x: Math.max(0, x), y: Math.max(0, y),
-            width: w, height: w / (img.width / img.height),
-            rotation: (Math.random() - 0.5) * 4, zIndex: elements?.length ?? 0, locked: false,
-            src, filter: 'none',
-          } as PhotoElement)
-          savePhotoToLibrary(id, src)
+          addPhotoElement(id, src, Math.max(0, x), Math.max(0, y), w, w / (img.width / img.height))
         }
         img.src = ev.target?.result as string
       }
       reader.readAsDataURL(files[0])
     }
-  }, [addElement, savePhotoToLibrary, elements])
+  }, [addElement, addPhotoElement, elements])
 
   const renderElement = (el: AnyElement) => {
     const isSelected = selectedElementId === el.id
@@ -312,7 +313,7 @@ export function EventCanvas({
             ? <textarea autoFocus value={editingText} onChange={(e) => setEditingText(e.target.value)} onBlur={commitTextEdit} onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null); if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitTextEdit() } }} className="w-full h-full resize-none bg-transparent outline-none border-none" style={{ fontFamily: (el as TextElement).fontFamily, fontSize: (el as TextElement).fontSize, fontWeight: (el as TextElement).fontWeight, color: (el as TextElement).color, textAlign: (el as TextElement).textAlign }} />
             : <div className="w-full h-full flex items-center justify-center break-words leading-snug" style={{ fontFamily: (el as TextElement).fontFamily, fontSize: (el as TextElement).fontSize, fontWeight: (el as TextElement).fontWeight, color: (el as TextElement).color, textAlign: (el as TextElement).textAlign }}>{(el as TextElement).content}</div>
         )}
-        {isSelected && !el.locked && el.type !== 'washi' && el.type !== 'highlight' && (
+        {isSelected && !el.locked && (
           (['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
             <div key={corner}
               className={cn('absolute w-3 h-3 bg-accent rounded-full border-2 border-background',
