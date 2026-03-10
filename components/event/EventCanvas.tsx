@@ -15,6 +15,8 @@ import { PHOTO_LIBRARY_LIMIT } from '@/lib/event-types'
 
 const CANVAS_WIDTH = 820
 const CANVAS_HEIGHT = 620
+const ELEMENTS_LIMIT = 60 // Liveblocks free tier: cap storage growth per room
+const PHOTO_MAX_PX = 800  // Resize dropped photos to stay under 2 MB LiveList item limit
 
 const SPRING_KEYFRAMES = `
 @keyframes spring-pop {
@@ -57,7 +59,9 @@ export function EventCanvas({
 
   // Liveblocks mutations
   const addElement = useMutation(({ storage }, element: AnyElement) => {
-    storage.get('elements').push(element)
+    const list = storage.get('elements')
+    if (list.toArray().length >= ELEMENTS_LIMIT) return
+    list.push(element)
   }, [])
 
   const updateElement = useMutation(({ storage }, id: string, updates: Partial<AnyElement>) => {
@@ -78,6 +82,7 @@ export function EventCanvas({
     const photos = storage.get('photos')
     if (photos.toArray().length >= PHOTO_LIBRARY_LIMIT) return
     const list = storage.get('elements')
+    if (list.toArray().length >= ELEMENTS_LIMIT) return
     const el: PhotoElement = {
       id, type: 'photo',
       x, y, width: w, height: h,
@@ -252,14 +257,20 @@ export function EventCanvas({
     if (files.length > 0 && files[0].type.startsWith('image/')) {
       const reader = new FileReader()
       reader.onload = (ev) => {
+        const raw = ev.target?.result as string
         const img = new window.Image()
         img.onload = () => {
-          const w = 220
-          const id = generateElementId()
-          const src = ev.target?.result as string
-          addPhotoElement(id, src, Math.max(0, x), Math.max(0, y), w, w / (img.width / img.height))
+          // Resize + compress before storing to stay within 2 MB LiveList item limit
+          const scale = Math.min(1, PHOTO_MAX_PX / Math.max(img.width, img.height))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+          const src = canvas.toDataURL('image/jpeg', 0.75)
+          const displayW = 220
+          addPhotoElement(generateElementId(), src, Math.max(0, x), Math.max(0, y), displayW, displayW / (canvas.width / canvas.height))
         }
-        img.src = ev.target?.result as string
+        img.src = raw
       }
       reader.readAsDataURL(files[0])
     }
