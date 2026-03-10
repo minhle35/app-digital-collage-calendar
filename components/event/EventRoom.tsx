@@ -19,7 +19,10 @@ export function EventRoom({ eventId }: EventRoomProps) {
       initialPresence={{ cursor: null, name: guestName }}
       initialStorage={{
         elements: new LiveList([]),
-        metadata: new LiveObject(DEFAULT_METADATA),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        metadata: new LiveObject(DEFAULT_METADATA as any),
+        moments: new LiveList([]),
+        comments: new LiveList([]),
       }}
     >
       <Suspense fallback={<EventSkeleton />}>
