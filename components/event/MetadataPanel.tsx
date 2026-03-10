@@ -3,6 +3,7 @@
 import { useStorage, useMutation } from '@/lib/liveblocks'
 import { CANVAS_THEMES } from '@/lib/types'
 import type { CanvasTheme } from '@/lib/types'
+import type { EventMetadata } from '@/lib/event-types'
 import { cn } from '@/lib/utils'
 
 const WASHI_COLOURS = ['#f4c2c2', '#b5c9a8', '#aac4d0', '#c9b8d8', '#f0e08a', '#f4c9a8']
@@ -22,7 +23,7 @@ export function MetadataPanel({
 }: MetadataPanelProps) {
   const metadata = useStorage((root) => root.metadata)
 
-  const updateMetadata = useMutation(({ storage }, updates: Partial<typeof metadata>) => {
+  const updateMetadata = useMutation(({ storage }, updates: Partial<EventMetadata>) => {
     const meta = storage.get('metadata')
     Object.entries(updates).forEach(([k, v]) => meta.set(k as never, v as never))
   }, [])
@@ -129,7 +130,7 @@ export function MetadataPanel({
                     : 'border-border/30'
                 )}
               >
-                {t.label.split(' ')[0]}
+                {t.name.split(' ')[0]}
               </button>
             ))}
           </div>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useOthers } from '@/lib/liveblocks'
 import { useWebRTC } from '@/hooks/useWebRTC'
-import { Mic, MicOff, Video, VideoOff, Phone, PhoneOff, X } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, PhoneOff, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function WebcamTile() {
@@ -31,12 +31,15 @@ export function WebcamTile() {
     if (remoteVideoRef.current && remoteStream) remoteVideoRef.current.srcObject = remoteStream
   }, [remoteStream])
 
-  // Auto-call first other when they join and we've already started
+  // Auto-call first other when they join — run once per new peer, not on every render
+  const calledPeersRef = useRef<Set<number>>(new Set())
   useEffect(() => {
-    if (started && !isConnected && others.length > 0) {
-      const firstOther = others[0]
-      // Only the lower connectionId initiates to avoid double-call
-      if (myId < firstOther.connectionId) callPeer(firstOther.connectionId)
+    if (!started || isConnected || others.length === 0) return
+    const firstOther = others[0]
+    // Only the lower connectionId initiates to avoid both sides calling each other
+    if (myId < firstOther.connectionId && !calledPeersRef.current.has(firstOther.connectionId)) {
+      calledPeersRef.current.add(firstOther.connectionId)
+      callPeer(firstOther.connectionId)
     }
   }, [started, isConnected, others, myId, callPeer])
 
