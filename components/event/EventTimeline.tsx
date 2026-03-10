@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useStorage, useMutation, useSelf } from '@/lib/liveblocks'
 import type { MomentType, TimelineMoment } from '@/lib/event-types'
+import type { SidebarTheme } from './EventPage'
 import { cn } from '@/lib/utils'
 
 const MOMENT_ICONS: Record<MomentType, string> = {
@@ -84,7 +85,7 @@ function AddMomentForm({ onAdd, onCancel }: AddMomentFormProps) {
   )
 }
 
-export function EventTimeline() {
+export function EventTimeline({ sidebarTheme }: { sidebarTheme: SidebarTheme }) {
   const rawMoments = useStorage((root) => root.moments)
   // moments are stored as JSON strings to satisfy Liveblocks LsonObject constraint
   const moments: TimelineMoment[] = (rawMoments ?? []).flatMap((s) => {
@@ -143,8 +144,11 @@ export function EventTimeline() {
   hoursToShow.add(currentHour + 1)
 
   return (
-    <aside className="w-[280px] border-r flex flex-col shrink-0 overflow-hidden"
-      style={{ borderColor: '#e8ddd0', backgroundColor: '#fdf9f4' }}>
+    <aside className="w-[280px] border-r flex flex-col shrink-0 overflow-hidden paper-sidebar"
+      style={{
+        borderColor: '#e8ddd0',
+        backgroundColor: sidebarTheme.bg,
+      }}>
       {/* Header */}
       <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between"
         style={{ borderColor: '#e8ddd0' }}>

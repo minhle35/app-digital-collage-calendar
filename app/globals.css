@@ -168,6 +168,20 @@
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
   }
 
+  /* Paper texture overlay for sidebar */
+  .paper-sidebar {
+    position: relative;
+  }
+  .paper-sidebar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuBQOPg_ju35otq8isHj9akMzd3Nht_zW_Pl1nE7SwzJnQEvSnhmARZ1eqet3wtbeUj2VbjlJEAQKTZxVvJ2MbdAaxXNbpphpuqMNhFrvtZSH-bhmXSbBgSTzErxF83Zs0_i5r7FbHfhOYBGXKh5kboBydIIDRrOmqzxLM8UH4RgFVQQkwQQdhuyMevcEeWEeDEy3KlcuzHyzXgYVKVuF_V_CJkMGL0_jDJGTy2zZoLr3jsrIjdw9Vunc3ciw9NZrmfTKdZZbk7ZHzNv);
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
   /* Sticker Pack Theme Colors */
   .theme-pastel-kawaii {
     --sticker-primary: #ffb6c1;

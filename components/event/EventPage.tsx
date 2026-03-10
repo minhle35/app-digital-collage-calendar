@@ -30,6 +30,21 @@ export interface PageTheme {
   header: string   // header bg
 }
 
+export interface SidebarTheme {
+  id: string
+  name: string
+  bg: string
+  dot: string
+}
+
+export const SIDEBAR_THEMES: SidebarTheme[] = [
+  { id: 'paper-warm',  name: 'Paper Warm',  bg: '#fdf9f4', dot: '#d8d0c4' },
+  { id: 'paper-white', name: 'Paper',       bg: '#fbfaf9', dot: '#d1cfcd' },
+  { id: 'peach-mist',  name: 'Peach Mist',  bg: '#fef6f2', dot: '#e0c8c0' },
+  { id: 'blush-mist',  name: 'Blush Mist',  bg: '#fff4f4', dot: '#e8c8c8' },
+  { id: 'golden-mist', name: 'Golden Mist', bg: '#fdf8f0', dot: '#d8c0a0' },
+]
+
 export const PAGE_THEMES: PageTheme[] = [
   {
     id: 'milk-tea-default',
@@ -97,6 +112,7 @@ export function EventPage({ eventId }: EventPageProps) {
   const self = useSelf()
 
   const [pageTheme, setPageTheme] = useState<PageTheme>(PAGE_THEMES[0])
+  const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>(SIDEBAR_THEMES[1])
 
   const [showPhotoBooth, setShowPhotoBooth] = useState(false)
   const [showSoloStrip, setShowSoloStrip] = useState(false)
@@ -201,7 +217,7 @@ export function EventPage({ eventId }: EventPageProps) {
       <div className="flex-1 flex overflow-hidden">
 
         {/* Left: Timeline sidebar */}
-        <EventTimeline />
+        <EventTimeline sidebarTheme={sidebarTheme} />
 
         {/* Center: Canvas row + Thread stacked */}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -233,7 +249,7 @@ export function EventPage({ eventId }: EventPageProps) {
                   selectedElementId={selectedElementId}
                   onSelectElement={setSelectedElementId}
                   canvasTheme={metadata.canvasTheme}
-                  canvasStyle={metadata.canvasStyle ?? 'ruled'}
+                  canvasStyle={(metadata.canvasStyle ?? 'ruled') as import('@/lib/types').CanvasStyle}
                   date={metadata.date}
                 />
                 <LiveCursors />
@@ -299,6 +315,8 @@ export function EventPage({ eventId }: EventPageProps) {
                   onHighlightColorChange={setActiveHighlightColor}
                   pageTheme={pageTheme}
                   onPageThemeChange={setPageTheme}
+                  sidebarTheme={sidebarTheme}
+                  onSidebarThemeChange={setSidebarTheme}
                 />
               )}
             </div>

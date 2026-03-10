@@ -4,7 +4,7 @@ import { useStorage, useMutation } from '@/lib/liveblocks'
 import { CANVAS_THEMES, CANVAS_STYLES } from '@/lib/types'
 import type { CanvasTheme } from '@/lib/types'
 import type { EventMetadata } from '@/lib/event-types'
-import { PAGE_THEMES, type PageTheme } from './EventPage'
+import { PAGE_THEMES, SIDEBAR_THEMES, type PageTheme, type SidebarTheme } from './EventPage'
 import { cn } from '@/lib/utils'
 
 const WASHI_COLOURS = ['#f4c2c2', '#b5c9a8', '#aac4d0', '#c9b8d8', '#f0e08a', '#f4c9a8']
@@ -18,12 +18,15 @@ interface MetadataPanelProps {
   onHighlightColorChange: (c: string) => void
   pageTheme: PageTheme
   onPageThemeChange: (t: PageTheme) => void
+  sidebarTheme: SidebarTheme
+  onSidebarThemeChange: (t: SidebarTheme) => void
 }
 
 export function MetadataPanel({
   activeWashiColor, onWashiColorChange,
   activeHighlightColor, onHighlightColorChange,
   pageTheme, onPageThemeChange,
+  sidebarTheme, onSidebarThemeChange,
 }: MetadataPanelProps) {
   const metadata = useStorage((root) => root.metadata)
 
@@ -139,6 +142,24 @@ export function MetadataPanel({
                 />
                 <span style={{ color: '#5a4a3a' }}>{t.name}</span>
               </button>
+            ))}
+          </div>
+        </Field>
+
+        {/* Timeline sidebar bg */}
+        <Field label="Timeline bg">
+          <div className="flex gap-1.5 flex-wrap">
+            {SIDEBAR_THEMES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => onSidebarThemeChange(t)}
+                title={t.name}
+                className={cn(
+                  'w-8 h-8 rounded border-2 transition-all flex items-center justify-center',
+                  sidebarTheme.id === t.id ? 'border-accent ring-1 ring-accent scale-110' : 'border-transparent hover:border-border'
+                )}
+                style={{ backgroundColor: t.bg }}
+              />
             ))}
           </div>
         </Field>
