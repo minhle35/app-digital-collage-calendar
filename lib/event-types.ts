@@ -32,6 +32,7 @@ export interface EventMetadata {
   notes: string
   colorTag: string    // hex accent colour
   canvasTheme: CanvasTheme
+  canvasStyle: string // CanvasStyle — stored as string for index signature compat
   // Index signature required for Liveblocks LsonObject compatibility
   [key: string]: string
 }
@@ -45,6 +46,7 @@ export const DEFAULT_METADATA: EventMetadata = {
   notes: '',
   colorTag: '#c8a876',
   canvasTheme: 'soft-milk',
+  canvasStyle: 'ruled',
 }
 
 // ===== Photo Library =====
