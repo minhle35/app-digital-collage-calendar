@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { MetadataPanel } from './MetadataPanel'
-import { EventStickersPanel } from './EventStickersPanel'
 import { EventCanvas } from './EventCanvas'
 import { EventToolbar } from './EventToolbar'
+import { EventTimeline } from './EventTimeline'
+import { MomentsThread } from './MomentsThread'
+import { MetadataPanel } from './MetadataPanel'
+import { EventStickersPanel } from './EventStickersPanel'
 import { PresenceBar } from './PresenceBar'
 import { ShareButton } from './ShareButton'
 import { LiveCursors } from './LiveCursors'
@@ -19,9 +21,41 @@ interface EventPageProps {
   eventId: string
 }
 
+// Diamond logo SVG
+function DiamondLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path
+        d="M10 2L17 8.5L10 18L3 8.5L10 2Z"
+        fill="#c8a874"
+        stroke="#c8a874"
+        strokeWidth="0.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 8.5H17M10 2L7 8.5L10 18L13 8.5L10 2Z"
+        stroke="#fff"
+        strokeWidth="0.6"
+        strokeOpacity="0.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function formatDisplayDate(isoDate: string) {
+  if (!isoDate) return { day: '—', month: '', year: '' }
+  const d = new Date(isoDate + 'T12:00:00')
+  return {
+    day: d.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' }),
+    year: d.getFullYear().toString(),
+  }
+}
+
 export function EventPage({ eventId }: EventPageProps) {
   const metadata = useStorage((root) => root.metadata)
   const self = useSelf()
+
   const [showPhotoBooth, setShowPhotoBooth] = useState(false)
   const [showSoloStrip, setShowSoloStrip] = useState(false)
   const [showExport, setShowExport] = useState(false)
@@ -30,123 +64,207 @@ export function EventPage({ eventId }: EventPageProps) {
   const [activeHighlightColor, setActiveHighlightColor] = useState('#fef08a')
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'stickers' | 'details'>('stickers')
+  const [showRightPanel, setShowRightPanel] = useState(false)
 
   if (!metadata) return null
 
+  const { day, year } = formatDisplayDate(metadata.date)
+
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      <header className="h-11 border-b border-border px-4 flex items-center justify-between bg-card shrink-0 z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="font-serif text-base font-semibold tracking-tight shrink-0">DayMark</span>
-          <span className="text-border">·</span>
-          <h1 className="font-serif text-sm text-foreground/80 truncate">
-            {metadata.title || 'Untitled event'}
-          </h1>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: '#f7f2eb' }}>
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <header
+        className="shrink-0 flex items-center justify-between px-5 py-3 border-b z-20"
+        style={{ backgroundColor: '#fdf9f4', borderColor: '#e8ddd0' }}
+      >
+        {/* Left: logo + date */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <DiamondLogo />
+            <span className="font-serif text-sm font-semibold tracking-tight" style={{ color: '#2a2420' }}>
+              DayMark
+            </span>
+          </div>
+
+          <div className="h-4 w-px" style={{ backgroundColor: '#ddd4c0' }} />
+
+          <div className="flex items-baseline gap-2">
+            <h1 className="font-serif text-sm font-medium" style={{ color: '#3a3028' }}>
+              {metadata.title || 'Untitled event'}
+            </h1>
+            {day && (
+              <>
+                <span className="font-mono text-xs" style={{ color: '#c8a874' }}>·</span>
+                <span className="font-mono text-xs" style={{ color: '#8a7a6a' }}>{day}</span>
+                <span className="font-mono text-xs font-semibold" style={{ color: '#c8a874' }}>{year}</span>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: presence + actions */}
+        <div className="flex items-center gap-2.5">
           <PresenceBar />
+
+          <div className="h-4 w-px" style={{ backgroundColor: '#ddd4c0' }} />
+
           <ShareButton />
+
           <button
             onClick={() => setShowExport(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground font-mono text-xs font-medium hover:bg-secondary/80 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs transition-colors border"
+            style={{ borderColor: '#e0d4c0', color: '#6b5e4e', backgroundColor: '#faf6f0' }}
           >
             ⬇ Download
           </button>
+
           <button
             onClick={() => setShowSoloStrip(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground font-mono text-xs font-medium hover:bg-secondary/80 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs transition-colors border"
+            style={{ borderColor: '#e0d4c0', color: '#6b5e4e', backgroundColor: '#faf6f0' }}
           >
             🎞️ Solo strip
           </button>
+
           <button
             onClick={() => setShowPhotoBooth(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent text-accent-foreground font-mono text-xs font-medium hover:bg-accent/90 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs font-medium text-white transition-colors"
+            style={{ backgroundColor: '#c8a874' }}
           >
             📸 Photo together
+          </button>
+
+          {/* Toggle right panel */}
+          <button
+            onClick={() => setShowRightPanel((v) => !v)}
+            className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors"
+            style={{
+              borderColor: showRightPanel ? '#c8a874' : '#e0d4c0',
+              backgroundColor: showRightPanel ? '#f5ede0' : '#faf6f0',
+              color: '#8a7a6a',
+            }}
+            title="Toggle edit panel"
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
+              <rect x="1" y="2" width="11" height="1.5" rx="0.75" />
+              <rect x="1" y="5.75" width="7" height="1.5" rx="0.75" />
+              <rect x="1" y="9.5" width="9" height="1.5" rx="0.75" />
+            </svg>
           </button>
         </div>
       </header>
 
-      {/* Body */}
+      {/* ── Body ───────────────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left toolbar */}
-        <EventToolbar
-          activeTool={activeTool}
-          onToolChange={setActiveTool}
-          selectedElementId={selectedElementId}
-          onDeselect={() => setSelectedElementId(null)}
-          activeWashiColor={activeWashiColor}
-          activeHighlightColor={activeHighlightColor}
-        />
 
-        {/* Canvas area */}
-        <div className="flex-1 relative overflow-hidden">
-          <EventCanvas
-            activeTool={activeTool}
-            activeWashiColor={activeWashiColor}
-            activeHighlightColor={activeHighlightColor}
-            selectedElementId={selectedElementId}
-            onSelectElement={setSelectedElementId}
-            canvasTheme={metadata.canvasTheme}
-            date={metadata.date}
-          />
-          <LiveCursors />
+        {/* Left: Timeline sidebar */}
+        <EventTimeline />
+
+        {/* Center: Canvas + Thread stacked */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Drawing toolbar (horizontal strip above canvas) */}
+          <div className="shrink-0 border-b" style={{ borderColor: '#e8ddd0' }}>
+            <EventToolbar
+              activeTool={activeTool}
+              onToolChange={setActiveTool}
+              selectedElementId={selectedElementId}
+              onDeselect={() => setSelectedElementId(null)}
+              activeWashiColor={activeWashiColor}
+              activeHighlightColor={activeHighlightColor}
+            />
+          </div>
+
+          {/* Canvas area with grain texture */}
+          <div
+            className="flex-1 relative overflow-auto flex items-start justify-center pt-8 pb-4 px-4"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
+              backgroundColor: '#f0e8dc',
+            }}
+          >
+            <div className="relative" style={{ maxWidth: 1000, width: '100%' }}>
+              <EventCanvas
+                activeTool={activeTool}
+                activeWashiColor={activeWashiColor}
+                activeHighlightColor={activeHighlightColor}
+                selectedElementId={selectedElementId}
+                onSelectElement={setSelectedElementId}
+                canvasTheme={metadata.canvasTheme}
+                date={metadata.date}
+              />
+              <LiveCursors />
+
+              {/* Canvas hover controls */}
+              <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => setShowExport(true)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-sm border"
+                  style={{ backgroundColor: '#fdf9f4', borderColor: '#e0d4c0', color: '#8a7a6a' }}
+                  title="Download canvas"
+                >
+                  ⬇
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Moments Thread */}
+          <MomentsThread />
         </div>
 
-        {/* Right panel */}
-        <aside className="w-[280px] border-l border-border bg-card flex flex-col shrink-0 overflow-hidden">
-          {/* Tabs */}
-          <div className="flex border-b border-border shrink-0">
-            {(['stickers', 'details'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setRightTab(tab)}
-                className={cn(
-                  'flex-1 py-2 font-mono text-xs transition-colors',
-                  rightTab === tab
-                    ? 'text-foreground border-b-2 border-accent'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {tab === 'stickers' ? 'Stickers' : 'Details'}
-              </button>
-            ))}
-          </div>
+        {/* Right: Edit panel (stickers + details) — toggleable */}
+        {showRightPanel && (
+          <aside
+            className="w-[280px] border-l flex flex-col shrink-0 overflow-hidden"
+            style={{ borderColor: '#e8ddd0', backgroundColor: '#fdf9f4' }}
+          >
+            {/* Tabs */}
+            <div className="flex border-b shrink-0" style={{ borderColor: '#e8ddd0' }}>
+              {(['stickers', 'details'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setRightTab(tab)}
+                  className={cn(
+                    'flex-1 py-2.5 font-mono text-xs transition-colors',
+                    rightTab === tab
+                      ? 'border-b-2 font-medium'
+                      : 'hover:opacity-80'
+                  )}
+                  style={
+                    rightTab === tab
+                      ? { color: '#c8a874', borderColor: '#c8a874' }
+                      : { color: '#a09080' }
+                  }
+                >
+                  {tab === 'stickers' ? 'Stickers' : 'Details'}
+                </button>
+              ))}
+            </div>
 
-          {/* Panel content */}
-          <div className="flex-1 overflow-hidden flex flex-col">
-            {rightTab === 'stickers' ? (
-              <EventStickersPanel />
-            ) : (
-              <MetadataPanel
-                activeWashiColor={activeWashiColor}
-                onWashiColorChange={setActiveWashiColor}
-                activeHighlightColor={activeHighlightColor}
-                onHighlightColorChange={setActiveHighlightColor}
-              />
-            )}
-          </div>
-        </aside>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {rightTab === 'stickers' ? (
+                <EventStickersPanel />
+              ) : (
+                <MetadataPanel
+                  activeWashiColor={activeWashiColor}
+                  onWashiColorChange={setActiveWashiColor}
+                  activeHighlightColor={activeHighlightColor}
+                  onHighlightColorChange={setActiveHighlightColor}
+                />
+              )}
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Live webcam tile */}
       <WebcamTile />
 
-      {/* Export / download preview */}
-      <EventExportOverlay
-        open={showExport}
-        onOpenChange={setShowExport}
-      />
-
-      {/* Solo 4-shot strip */}
-      <EventPhotoboothModal
-        open={showSoloStrip}
-        onOpenChange={setShowSoloStrip}
-      />
-
-      {/* Photo booth overlay */}
+      {/* Overlays */}
+      <EventExportOverlay open={showExport} onOpenChange={setShowExport} />
+      <EventPhotoboothModal open={showSoloStrip} onOpenChange={setShowSoloStrip} />
       {showPhotoBooth && (
         <PhotoBoothOverlay
           onClose={() => setShowPhotoBooth(false)}

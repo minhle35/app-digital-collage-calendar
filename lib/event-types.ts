@@ -1,6 +1,27 @@
 import type { AnyElement, CanvasTheme } from './types'
 import type { LiveList, LiveObject } from '@liveblocks/client'
 
+// ===== Timeline Moments =====
+export type MomentType = 'reflection' | 'capture' | 'note' | 'collaboration'
+
+export interface TimelineMoment {
+  id: string
+  type: MomentType
+  time: string          // "14:35" 24-hour
+  content: string       // text or image URL
+  authorName: string
+  createdAt: number     // Date.now()
+}
+
+// ===== Thread Comments =====
+export interface ThreadComment {
+  id: string
+  text: string
+  authorName: string
+  createdAt: number     // Date.now()
+  reactions: string     // JSON: Record<emoji, count>  e.g. '{"✨":2,"❤️":1}'
+}
+
 // ===== Event Metadata =====
 export interface EventMetadata {
   title: string
@@ -11,6 +32,8 @@ export interface EventMetadata {
   notes: string
   colorTag: string    // hex accent colour
   canvasTheme: CanvasTheme
+  // Index signature required for Liveblocks LsonObject compatibility
+  [key: string]: string
 }
 
 export const DEFAULT_METADATA: EventMetadata = {
@@ -25,9 +48,12 @@ export const DEFAULT_METADATA: EventMetadata = {
 }
 
 // ===== Liveblocks room schema =====
+// moments and comments are stored as JSON strings to avoid LsonObject index-signature constraint
 export type Storage = {
   elements: LiveList<AnyElement>
   metadata: LiveObject<EventMetadata>
+  moments: LiveList<string>   // JSON.stringify(TimelineMoment)
+  comments: LiveList<string>  // JSON.stringify(ThreadComment)
 }
 
 export type Presence = {

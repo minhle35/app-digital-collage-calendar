@@ -11,6 +11,8 @@ export interface CanvasElement {
   rotation: number
   zIndex: number
   locked: boolean
+  // Index signature required for Liveblocks LsonObject compatibility
+  [key: string]: string | number | boolean | undefined | null
 }
 
 export interface PhotoElement extends CanvasElement {
