@@ -88,11 +88,23 @@ export function EventPhotosPanel() {
       files.forEach((file) => {
         const reader = new FileReader()
         reader.onload = (ev) => {
-          const src = ev.target?.result as string
+          const raw = ev.target?.result as string
           const img = new window.Image()
-          img.onload = () => { savePhoto({ id: generateElementId(), src, addedAt: Date.now() }); done() }
+          img.onload = () => {
+            // Resize to max 800px and compress to JPEG to stay within Liveblocks size limits
+            const MAX = 800
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+            const canvas = document.createElement('canvas')
+            canvas.width = Math.round(img.width * scale)
+            canvas.height = Math.round(img.height * scale)
+            const ctx = canvas.getContext('2d')!
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+            const src = canvas.toDataURL('image/jpeg', 0.75)
+            savePhoto({ id: generateElementId(), src, addedAt: Date.now() })
+            done()
+          }
           img.onerror = done
-          img.src = src
+          img.src = raw
         }
         reader.onerror = done
         reader.readAsDataURL(file)
