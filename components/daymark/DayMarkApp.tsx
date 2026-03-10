@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { DayMarkProvider, useDayMark } from '@/lib/DayMarkContext'
-import { fetchDateContext, generateElementId, INITIAL_STATE, type WashiElement, type AppMode } from '@/lib/types'
+import { generateElementId, type WashiElement, type AppMode } from '@/lib/types'
 import { Canvas } from './Canvas'
 import { Toolbar } from './Toolbar'
 import { StickersPanel } from './StickersPanel'
@@ -12,13 +12,15 @@ import { ExportDialog } from './ExportDialog'
 import { ExportCelebration } from './ExportCelebration'
 import { DatePickerDialog } from './DatePickerDialog'
 import { PhotoboothModal } from './PhotoboothModal'
+import { useSoloSync } from '@/hooks/useSoloSync'
 import { cn } from '@/lib/utils'
 
-// Auto-place the initial washi strip after 2 seconds on first open
-function useAutoWashi(hasElements: boolean, canvasReady: boolean) {
+// Auto-place the initial washi strip after 2 seconds on first open.
+// Waits for cloud hydration so we don't add a strip to a restored canvas.
+function useAutoWashi(hasElements: boolean, isHydrated: boolean) {
   const { dispatch } = useDayMark()
   useEffect(() => {
-    if (!canvasReady || hasElements) return
+    if (!isHydrated || hasElements) return
     const timer = setTimeout(() => {
       const el: WashiElement = {
         id: generateElementId(),
@@ -37,9 +39,8 @@ function useAutoWashi(hasElements: boolean, canvasReady: boolean) {
       dispatch({ type: 'ADD_ELEMENT', element: el })
     }, 2000)
     return () => clearTimeout(timer)
-    // Only run once when canvas first becomes ready and is empty
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasReady])
+  }, [isHydrated])
 }
 
 function DayMarkInner() {
@@ -48,27 +49,12 @@ function DayMarkInner() {
   const [showExport, setShowExport] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPhotobooth, setShowPhotobooth] = useState(false)
-  const [canvasReady, setCanvasReady] = useState(false)
 
-  // Mark canvas as ready after initial mount
-  useEffect(() => {
-    const t = setTimeout(() => setCanvasReady(true), 100)
-    return () => clearTimeout(t)
-  }, [])
+  // Sync with Liveblocks cloud — handles initial load + ongoing saves
+  useSoloSync()
 
-  // Auto-washi on first open (only when canvas is empty)
-  useAutoWashi(state.elements.length > 0, canvasReady)
-
-  // Auto-load today's date on first open
-  useEffect(() => {
-    if (!state.selectedDate) {
-      const today = new Date()
-      dispatch({ type: 'SET_DATE', date: today })
-      fetchDateContext(today).then((context) => {
-        dispatch({ type: 'SET_DATE_CONTEXT', context })
-      })
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-washi only after cloud state is loaded (isHydrated) and canvas is empty
+  useAutoWashi(state.elements.length > 0, state.isHydrated)
 
   const handleExport = useCallback(() => setShowExport(true), [])
   const handleOpenThemes = useCallback(() => setShowThemes(true), [])
@@ -133,10 +119,7 @@ function DayMarkInner() {
 
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Canvas */}
         <Canvas />
-
-        {/* Right sidebar — Properties when element selected, Stickers otherwise */}
         {state.selectedElementId ? <PropertiesPanel /> : <StickersPanel />}
       </div>
 
