@@ -162,11 +162,11 @@ export function EventPage({ eventId }: EventPageProps) {
         {/* Left: Timeline sidebar */}
         <EventTimeline />
 
-        {/* Center: Canvas + Thread stacked */}
+        {/* Center: Canvas row + Thread stacked */}
         <div className="flex-1 flex flex-col overflow-hidden">
 
-          {/* Drawing toolbar (horizontal strip above canvas) */}
-          <div className="shrink-0 border-b" style={{ borderColor: '#e8ddd0' }}>
+          {/* Canvas row: vertical toolbar left + canvas right */}
+          <div className="flex-1 flex overflow-hidden">
             <EventToolbar
               activeTool={activeTool}
               onToolChange={setActiveTool}
@@ -175,38 +175,39 @@ export function EventPage({ eventId }: EventPageProps) {
               activeWashiColor={activeWashiColor}
               activeHighlightColor={activeHighlightColor}
             />
-          </div>
 
-          {/* Canvas area with grain texture */}
-          <div
-            className="flex-1 relative overflow-auto flex items-start justify-center pt-8 pb-4 px-4"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
-              backgroundColor: '#f0e8dc',
-            }}
-          >
-            <div className="relative" style={{ maxWidth: 1000, width: '100%' }}>
-              <EventCanvas
-                activeTool={activeTool}
-                activeWashiColor={activeWashiColor}
-                activeHighlightColor={activeHighlightColor}
-                selectedElementId={selectedElementId}
-                onSelectElement={setSelectedElementId}
-                canvasTheme={metadata.canvasTheme}
-                date={metadata.date}
-              />
-              <LiveCursors />
+            {/* Canvas area with grain texture */}
+            <div
+              className="flex-1 relative overflow-auto flex items-center justify-center p-4"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
+                backgroundColor: '#f0e8dc',
+              }}
+            >
+              <div className="relative">
+                <EventCanvas
+                  activeTool={activeTool}
+                  activeWashiColor={activeWashiColor}
+                  activeHighlightColor={activeHighlightColor}
+                  selectedElementId={selectedElementId}
+                  onSelectElement={setSelectedElementId}
+                  canvasTheme={metadata.canvasTheme}
+                  canvasStyle={metadata.canvasStyle ?? 'ruled'}
+                  date={metadata.date}
+                />
+                <LiveCursors />
 
-              {/* Canvas hover controls */}
-              <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => setShowExport(true)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-sm border"
-                  style={{ backgroundColor: '#fdf9f4', borderColor: '#e0d4c0', color: '#8a7a6a' }}
-                  title="Download canvas"
-                >
-                  ⬇
-                </button>
+                {/* Canvas hover controls */}
+                <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => setShowExport(true)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-sm border"
+                    style={{ backgroundColor: '#fdf9f4', borderColor: '#e0d4c0', color: '#8a7a6a' }}
+                    title="Download canvas"
+                  >
+                    ⬇
+                  </button>
+                </div>
               </div>
             </div>
           </div>
