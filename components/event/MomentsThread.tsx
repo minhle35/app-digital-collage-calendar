@@ -141,8 +141,8 @@ export function MomentsThread() {
 
   return (
     <section
-      className="border-t px-6 py-4 flex flex-col"
-      style={{ borderColor: '#e8ddd0', backgroundColor: '#fdf9f4', minHeight: 220, maxHeight: 360 }}
+      className="border-t px-4 py-3 flex flex-col"
+      style={{ borderColor: '#e8ddd0', backgroundColor: '#fdf9f4', minHeight: 140, maxHeight: 260 }}
     >
       {/* Section header */}
       <div className="flex items-center gap-2 mb-4 shrink-0">
