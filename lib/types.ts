@@ -170,6 +170,9 @@ export interface DayMarkState {
   showCelebration: boolean
   exportedImageUrl: string | null
   memoryId: string | null
+
+  // Cloud sync
+  isHydrated: boolean  // true once cloud state is loaded (or confirmed empty)
 }
 
 export type DayMarkAction =
@@ -195,6 +198,17 @@ export type DayMarkAction =
   | { type: 'FINISH_EXPORT'; imageUrl: string; memoryId: string }
   | { type: 'SHOW_CELEBRATION'; show: boolean }
   | { type: 'RESET' }
+  | {
+      type: 'LOAD_CANVAS'
+      payload: {
+        elements: AnyElement[]
+        canvasTheme: CanvasTheme
+        mode: AppMode
+        selectedDate: Date | null
+        milestone: MilestoneData | null
+        stickerPack: StickerPack
+      }
+    }
 
 // ===== Constants =====
 export const CANVAS_THEMES: CanvasThemeConfig[] = [
@@ -488,6 +502,7 @@ export const INITIAL_STATE: DayMarkState = {
   showCelebration: false,
   exportedImageUrl: null,
   memoryId: null,
+  isHydrated: false,
 }
 
 // Reducer
@@ -601,6 +616,19 @@ export function dayMarkReducer(state: DayMarkState, action: DayMarkAction): DayM
       return { ...state, showCelebration: action.show }
     case 'RESET':
       return { ...INITIAL_STATE, selectedDate: state.selectedDate, dateContext: state.dateContext, canvasTheme: state.canvasTheme }
+    case 'LOAD_CANVAS':
+      return {
+        ...state,
+        elements: action.payload.elements,
+        canvasTheme: action.payload.canvasTheme,
+        mode: action.payload.mode,
+        selectedDate: action.payload.selectedDate,
+        milestone: action.payload.milestone,
+        stickerPack: action.payload.stickerPack,
+        history: [action.payload.elements],
+        historyIndex: 0,
+        isHydrated: true,
+      }
     default:
       return state
   }
