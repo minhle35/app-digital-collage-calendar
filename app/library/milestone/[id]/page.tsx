@@ -1,3 +1,6 @@
-export default function MilestoneTimelinePage({ params }: { params: { id: string } }) {
-  return <div>Milestone Timeline: {params.id}</div>
+import { use } from 'react'
+
+export default function MilestoneTimelinePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  return <div>Milestone Timeline: {id}</div>
 }
