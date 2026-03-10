@@ -47,13 +47,21 @@ export const DEFAULT_METADATA: EventMetadata = {
   canvasTheme: 'soft-milk',
 }
 
+// ===== Photo Library =====
+export interface SavedPhoto {
+  id: string
+  src: string    // base64 data URL
+  addedAt: number
+}
+
 // ===== Liveblocks room schema =====
-// moments and comments are stored as JSON strings to avoid LsonObject index-signature constraint
+// moments, comments, photos stored as JSON strings to avoid LsonObject index-signature constraint
 export type Storage = {
   elements: LiveList<AnyElement>
   metadata: LiveObject<EventMetadata>
   moments: LiveList<string>   // JSON.stringify(TimelineMoment)
   comments: LiveList<string>  // JSON.stringify(ThreadComment)
+  photos: LiveList<string>    // JSON.stringify(SavedPhoto)
 }
 
 export type Presence = {

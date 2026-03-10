@@ -23,6 +23,7 @@ export function EventRoom({ eventId }: EventRoomProps) {
         metadata: new LiveObject(DEFAULT_METADATA as any),
         moments: new LiveList([]),
         comments: new LiveList([]),
+        photos: new LiveList([]),
       }}
     >
       <Suspense fallback={<EventSkeleton />}>

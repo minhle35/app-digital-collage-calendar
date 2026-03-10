@@ -73,6 +73,13 @@ export function EventCanvas({
     if (idx !== -1) list.delete(idx)
   }, [])
 
+  const savePhotoToLibrary = useMutation(({ storage }, id: string, src: string) => {
+    const photos = storage.get('photos')
+    // Deduplicate by id
+    const exists = photos.toArray().some((s) => { try { return JSON.parse(s).id === id } catch { return false } })
+    if (!exists) photos.push(JSON.stringify({ id, src, addedAt: Date.now() }))
+  }, [])
+
   // Spring pop for newly added stickers
   const prevLengthRef = useRef(0)
   useEffect(() => {
@@ -238,19 +245,22 @@ export function EventCanvas({
         const img = new window.Image()
         img.onload = () => {
           const w = 220
+          const id = generateElementId()
+          const src = ev.target?.result as string
           addElement({
-            id: generateElementId(), type: 'photo',
+            id, type: 'photo',
             x: Math.max(0, x), y: Math.max(0, y),
             width: w, height: w / (img.width / img.height),
             rotation: (Math.random() - 0.5) * 4, zIndex: elements?.length ?? 0, locked: false,
-            src: ev.target?.result as string, filter: 'none',
+            src, filter: 'none',
           } as PhotoElement)
+          savePhotoToLibrary(id, src)
         }
         img.src = ev.target?.result as string
       }
       reader.readAsDataURL(files[0])
     }
-  }, [addElement, elements])
+  }, [addElement, savePhotoToLibrary, elements])
 
   const renderElement = (el: AnyElement) => {
     const isSelected = selectedElementId === el.id

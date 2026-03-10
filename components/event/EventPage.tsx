@@ -7,6 +7,7 @@ import { EventTimeline } from './EventTimeline'
 import { MomentsThread } from './MomentsThread'
 import { MetadataPanel } from './MetadataPanel'
 import { EventStickersPanel } from './EventStickersPanel'
+import { EventPhotosPanel } from './EventPhotosPanel'
 import { PresenceBar } from './PresenceBar'
 import { ShareButton } from './ShareButton'
 import { LiveCursors } from './LiveCursors'
@@ -63,7 +64,7 @@ export function EventPage({ eventId }: EventPageProps) {
   const [activeWashiColor, setActiveWashiColor] = useState('#f4c2c2')
   const [activeHighlightColor, setActiveHighlightColor] = useState('#fef08a')
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
-  const [rightTab, setRightTab] = useState<'stickers' | 'details'>('stickers')
+  const [rightTab, setRightTab] = useState<'stickers' | 'photos' | 'details'>('stickers')
   const [showRightPanel, setShowRightPanel] = useState(false)
 
   if (!metadata) return null
@@ -222,7 +223,7 @@ export function EventPage({ eventId }: EventPageProps) {
           >
             {/* Tabs */}
             <div className="flex border-b shrink-0" style={{ borderColor: '#e8ddd0' }}>
-              {(['stickers', 'details'] as const).map((tab) => (
+              {(['stickers', 'photos', 'details'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setRightTab(tab)}
@@ -238,7 +239,7 @@ export function EventPage({ eventId }: EventPageProps) {
                       : { color: '#a09080' }
                   }
                 >
-                  {tab === 'stickers' ? 'Stickers' : 'Details'}
+                  {tab === 'stickers' ? 'Stickers' : tab === 'photos' ? 'Photos' : 'Details'}
                 </button>
               ))}
             </div>
@@ -246,6 +247,8 @@ export function EventPage({ eventId }: EventPageProps) {
             <div className="flex-1 overflow-hidden flex flex-col">
               {rightTab === 'stickers' ? (
                 <EventStickersPanel />
+              ) : rightTab === 'photos' ? (
+                <EventPhotosPanel />
               ) : (
                 <MetadataPanel
                   activeWashiColor={activeWashiColor}
