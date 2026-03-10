@@ -64,6 +64,22 @@ export interface HighlightElement extends CanvasElement {
 
 export type AnyElement = PhotoElement | StickerElement | TextElement | ShapeElement | WashiElement | HighlightElement
 
+// ===== Canvas Style (paper/notebook texture) =====
+export type CanvasStyle = 'blank' | 'ruled' | 'grid' | 'dots'
+
+export interface CanvasStyleConfig {
+  id: CanvasStyle
+  name: string
+  icon: string
+}
+
+export const CANVAS_STYLES: CanvasStyleConfig[] = [
+  { id: 'blank',  name: 'Blank',  icon: '□' },
+  { id: 'ruled',  name: 'Ruled',  icon: '≡' },
+  { id: 'grid',   name: 'Grid',   icon: '⊞' },
+  { id: 'dots',   name: 'Dots',   icon: '∷' },
+]
+
 // ===== Theme System =====
 export type CanvasTheme =
   | 'soft-milk'

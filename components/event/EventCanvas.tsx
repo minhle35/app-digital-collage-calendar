@@ -7,7 +7,7 @@ import {
   generateElementId,
   type AnyElement, type PhotoElement, type StickerElement,
   type TextElement, type WashiElement, type HighlightElement,
-  type CanvasTheme,
+  type CanvasTheme, type CanvasStyle,
 } from '@/lib/types'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -35,12 +35,39 @@ interface EventCanvasProps {
   selectedElementId: string | null
   onSelectElement: (id: string | null) => void
   canvasTheme: CanvasTheme
+  canvasStyle: CanvasStyle
   date: string
+}
+
+function canvasStyleOverlay(style: CanvasStyle, isDark: boolean): React.CSSProperties {
+  const lineColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(26,26,26,0.07)'
+  const dotColor  = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(26,26,26,0.15)'
+  switch (style) {
+    case 'ruled':
+      return {
+        backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, ${lineColor} 28px)`,
+      }
+    case 'grid':
+      return {
+        backgroundImage: [
+          `repeating-linear-gradient(to bottom, transparent, transparent 27px, ${lineColor} 28px)`,
+          `repeating-linear-gradient(to right,  transparent, transparent 27px, ${lineColor} 28px)`,
+        ].join(', '),
+      }
+    case 'dots':
+      return {
+        backgroundImage: `radial-gradient(circle, ${dotColor} 1px, transparent 1px)`,
+        backgroundSize: '28px 28px',
+      }
+    case 'blank':
+    default:
+      return {}
+  }
 }
 
 export function EventCanvas({
   activeTool, activeWashiColor, activeHighlightColor,
-  selectedElementId, onSelectElement, canvasTheme, date,
+  selectedElementId, onSelectElement, canvasTheme, canvasStyle, date,
 }: EventCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const elements = useStorage((root) => root.elements)
@@ -360,9 +387,13 @@ export function EventCanvas({
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
         >
-          {/* Ruled lines */}
-          <div className="absolute inset-0 pointer-events-none opacity-[0.06]"
-            style={{ backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, ${themeConfig.isDark ? '#ffffff' : '#1a1a1a'} 28px)` }} />
+          {/* Canvas style overlay (blank / ruled / grid / dots) */}
+          {canvasStyle !== 'blank' && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={canvasStyleOverlay(canvasStyle, themeConfig.isDark)}
+            />
+          )}
 
           {/* Date watermark */}
           {parsedDate && (

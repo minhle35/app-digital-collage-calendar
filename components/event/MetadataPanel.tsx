@@ -1,7 +1,7 @@
 'use client'
 
 import { useStorage, useMutation } from '@/lib/liveblocks'
-import { CANVAS_THEMES } from '@/lib/types'
+import { CANVAS_THEMES, CANVAS_STYLES } from '@/lib/types'
 import type { CanvasTheme } from '@/lib/types'
 import type { EventMetadata } from '@/lib/event-types'
 import { cn } from '@/lib/utils'
@@ -131,6 +131,28 @@ export function MetadataPanel({
                 )}
               >
                 {t.name.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        {/* Canvas style */}
+        <Field label="Paper style">
+          <div className="grid grid-cols-4 gap-1.5">
+            {CANVAS_STYLES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => updateMetadata({ canvasStyle: s.id })}
+                className={cn(
+                  'h-9 rounded text-xs font-mono transition-all border flex flex-col items-center justify-center gap-0.5',
+                  metadata.canvasStyle === s.id
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-border/30 text-muted-foreground hover:border-border hover:bg-secondary/40'
+                )}
+                title={s.name}
+              >
+                <span className="text-sm leading-none">{s.icon}</span>
+                <span className="text-[9px]">{s.name}</span>
               </button>
             ))}
           </div>
