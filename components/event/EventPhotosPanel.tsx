@@ -147,7 +147,7 @@ export function EventPhotosPanel() {
                 {/* Always-visible delete button */}
                 <button
                   onClick={() => deleteFromLibrary(photo.id)}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ backgroundColor: 'rgba(180,40,40,0.85)' }}
                   title="Delete permanently"
                 >
