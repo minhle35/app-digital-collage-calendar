@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useStorage, useMutation } from '@/lib/liveblocks'
+import { useStorage, useMutation, useOthers, useUpdateMyPresence } from '@/lib/liveblocks'
 import { generateElementId, type PhotoElement } from '@/lib/types'
 import { PHOTO_LIBRARY_LIMIT, type SavedPhoto } from '@/lib/event-types'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Lock } from 'lucide-react'
 
 const CANVAS_W = 820
 const CANVAS_H = 620
@@ -19,6 +19,13 @@ export function EventPhotosPanel() {
   const rawPhotos = useStorage((root) => root.photos)
   const photos = parsePhotos(rawPhotos ?? [])
   const atLimit = photos.length >= PHOTO_LIBRARY_LIMIT
+
+  const others = useOthers()
+  const updatePresence = useUpdateMyPresence()
+
+  // Find another user currently holding the photo lock
+  const lockHolder = others.find((o) => o.presence.photoLock != null) ?? null
+  const isLocked = lockHolder !== null
 
   const savePhoto = useMutation(({ storage }, photo: SavedPhoto) => {
     const list = storage.get('photos')
@@ -59,31 +66,60 @@ export function EventPhotosPanel() {
     if (idx !== -1) list.delete(idx)
   }, [])
 
+  const handleDelete = useCallback((id: string) => {
+    if (isLocked) return
+    updatePresence({ photoLock: 'deleting' })
+    deleteFromLibrary(id)
+    updatePresence({ photoLock: null })
+  }, [isLocked, updatePresence, deleteFromLibrary])
+
   const handleUpload = useCallback(() => {
-    if (atLimit) return
+    if (atLimit || isLocked) return
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
     input.multiple = true
     input.onchange = () => {
-      Array.from(input.files ?? []).forEach((file) => {
+      const files = Array.from(input.files ?? []).slice(0, PHOTO_LIBRARY_LIMIT - photos.length)
+      if (files.length === 0) return
+      updatePresence({ photoLock: 'uploading' })
+      let remaining = files.length
+      const done = () => { if (--remaining === 0) updatePresence({ photoLock: null }) }
+      files.forEach((file) => {
         const reader = new FileReader()
         reader.onload = (ev) => {
           const src = ev.target?.result as string
           const img = new window.Image()
-          img.onload = () => {
-            savePhoto({ id: generateElementId(), src, addedAt: Date.now() })
-          }
+          img.onload = () => { savePhoto({ id: generateElementId(), src, addedAt: Date.now() }); done() }
+          img.onerror = done
           img.src = src
         }
+        reader.onerror = done
         reader.readAsDataURL(file)
       })
     }
     input.click()
-  }, [atLimit, savePhoto])
+  }, [atLimit, isLocked, photos.length, updatePresence, savePhoto])
+
+  const lockAction = lockHolder?.presence.photoLock === 'uploading' ? 'uploading a photo' : 'deleting a photo'
+  const lockName = lockHolder?.presence.name ?? 'Someone'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Lock warning banner */}
+      {isLocked && (
+        <div
+          className="shrink-0 mx-3 mt-2.5 px-3 py-2 rounded-lg flex items-start gap-2 border"
+          style={{ backgroundColor: '#fdf6e3', borderColor: '#e8c97a' }}
+        >
+          <Lock className="w-3 h-3 mt-0.5 shrink-0" style={{ color: '#a07820' }} />
+          <p className="font-mono text-[10px] leading-relaxed" style={{ color: '#7a5810' }}>
+            <span className="font-semibold">{lockName}</span> is {lockAction}.
+            <br />Upload and delete are locked until they finish.
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div
         className="shrink-0 px-3 py-2.5 border-b space-y-2"
@@ -108,16 +144,17 @@ export function EventPhotosPanel() {
           </div>
           <button
             onClick={handleUpload}
-            disabled={atLimit}
+            disabled={atLimit || isLocked}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full font-mono text-[10px] font-medium text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ backgroundColor: '#c8a874' }}
+            title={isLocked ? `${lockName} is ${lockAction} — please wait` : undefined}
           >
             + Upload
           </button>
         </div>
 
         {/* Limit warning */}
-        {atLimit && (
+        {atLimit && !isLocked && (
           <p className="font-mono text-[9px] leading-relaxed" style={{ color: '#c05050' }}>
             Limit reached. Delete a photo permanently to free a slot.
           </p>
@@ -148,17 +185,29 @@ export function EventPhotosPanel() {
                   draggable={false}
                 />
 
-                {/* Always-visible delete button */}
-                <button
-                  onClick={() => deleteFromLibrary(photo.id)}
-                  className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ backgroundColor: 'rgba(180,40,40,0.85)' }}
-                  title="Delete permanently"
-                >
-                  <Trash2 className="w-2.5 h-2.5 text-white" />
-                </button>
+                {/* Delete button — hidden when locked */}
+                {!isLocked && (
+                  <button
+                    onClick={() => handleDelete(photo.id)}
+                    className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ backgroundColor: 'rgba(180,40,40,0.85)' }}
+                    title="Delete permanently"
+                  >
+                    <Trash2 className="w-2.5 h-2.5 text-white" />
+                  </button>
+                )}
 
-                {/* Hover overlay — add to canvas */}
+                {/* Lock indicator overlay when locked */}
+                {isLocked && (
+                  <div className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(160,120,32,0.75)' }}
+                    title={`${lockName} is ${lockAction}`}
+                  >
+                    <Lock className="w-2.5 h-2.5 text-white" />
+                  </div>
+                )}
+
+                {/* Hover overlay — add to canvas (always available) */}
                 <div
                   className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55) 40%, transparent)' }}

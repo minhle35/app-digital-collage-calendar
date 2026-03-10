@@ -16,7 +16,7 @@ export function EventRoom({ eventId }: EventRoomProps) {
   return (
     <RoomProvider
       id={`event-${eventId}`}
-      initialPresence={{ cursor: null, name: guestName }}
+      initialPresence={{ cursor: null, name: guestName, photoLock: null }}
       initialStorage={{
         elements: new LiveList([]),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -69,6 +69,7 @@ export type Storage = {
 export type Presence = {
   cursor: { x: number; y: number } | null
   name: string  // "Guest · abc123" auto-generated
+  photoLock: 'uploading' | 'deleting' | null
 }
 
 // ===== Broadcast events =====
