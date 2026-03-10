@@ -4,6 +4,7 @@ import { useStorage, useMutation } from '@/lib/liveblocks'
 import { CANVAS_THEMES, CANVAS_STYLES } from '@/lib/types'
 import type { CanvasTheme } from '@/lib/types'
 import type { EventMetadata } from '@/lib/event-types'
+import { PAGE_THEMES, type PageTheme } from './EventPage'
 import { cn } from '@/lib/utils'
 
 const WASHI_COLOURS = ['#f4c2c2', '#b5c9a8', '#aac4d0', '#c9b8d8', '#f0e08a', '#f4c9a8']
@@ -15,11 +16,14 @@ interface MetadataPanelProps {
   onWashiColorChange: (c: string) => void
   activeHighlightColor: string
   onHighlightColorChange: (c: string) => void
+  pageTheme: PageTheme
+  onPageThemeChange: (t: PageTheme) => void
 }
 
 export function MetadataPanel({
   activeWashiColor, onWashiColorChange,
   activeHighlightColor, onHighlightColorChange,
+  pageTheme, onPageThemeChange,
 }: MetadataPanelProps) {
   const metadata = useStorage((root) => root.metadata)
 
@@ -110,6 +114,31 @@ export function MetadataPanel({
                 )}
                 style={{ backgroundColor: c }}
               />
+            ))}
+          </div>
+        </Field>
+
+        {/* Workspace background */}
+        <Field label="Workspace bg">
+          <div className="grid grid-cols-2 gap-1.5">
+            {PAGE_THEMES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => onPageThemeChange(t)}
+                className={cn(
+                  'h-8 rounded text-[10px] font-mono transition-all border flex items-center gap-1.5 px-2',
+                  pageTheme.id === t.id
+                    ? 'border-accent ring-1 ring-accent'
+                    : 'border-border/30 hover:border-border'
+                )}
+                style={{ backgroundColor: t.body }}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10"
+                  style={{ backgroundColor: t.wrapper }}
+                />
+                <span style={{ color: '#5a4a3a' }}>{t.name}</span>
+              </button>
             ))}
           </div>
         </Field>

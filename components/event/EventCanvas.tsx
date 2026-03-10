@@ -82,7 +82,7 @@ export function EventCanvas({
   const [resizeState, setResizeState] = useState<{ elementId: string; corner: string; startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
   const [snapFlash, setSnapFlash] = useState(false)
 
-  const themeConfig = CANVAS_THEMES.find((t) => t.id === canvasTheme)!
+  const themeConfig = CANVAS_THEMES.find((t) => t.id === canvasTheme) ?? CANVAS_THEMES[0]
 
   // Liveblocks mutations
   const addElement = useMutation(({ storage }, element: AnyElement) => {
