@@ -1,28 +1,32 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { BodySegmenter } from '@tensorflow-models/body-segmentation'
+import type { ImageSegmenter } from '@mediapipe/tasks-vision'
 
-// Module-level singleton — shared across all hook instances
-let segmenterCache: Promise<BodySegmenter> | null = null
+// Pinned to the installed package version
+const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm'
+const MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite'
 
-async function getSegmenter(): Promise<BodySegmenter> {
+// Module-level singleton
+let segmenterCache: Promise<ImageSegmenter> | null = null
+
+async function getSegmenter(): Promise<ImageSegmenter> {
   if (!segmenterCache) {
     segmenterCache = (async () => {
-      const tf = await import('@tensorflow/tfjs-core')
-      await import('@tensorflow/tfjs-backend-webgl')
-      await tf.setBackend('webgl')
-      await tf.ready()
-
-      const bodySegmentation = await import('@tensorflow-models/body-segmentation')
-      const model = bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation
-      return bodySegmentation.createSegmenter(model, {
-        runtime: 'tfjs',
-        modelType: 'general',
+      const { ImageSegmenter, FilesetResolver } = await import('@mediapipe/tasks-vision')
+      const vision = await FilesetResolver.forVisionTasks(WASM_CDN)
+      return ImageSegmenter.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: MODEL_URL,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        outputCategoryMask: false,
+        outputConfidenceMasks: true,
       })
     })()
 
-    // Reset cache on failure so the next attempt can retry
     segmenterCache.catch(() => {
       segmenterCache = null
     })
@@ -30,12 +34,8 @@ async function getSegmenter(): Promise<BodySegmenter> {
   return segmenterCache
 }
 
-/**
- * Lazily loads the MediaPipe Selfie Segmentation model via TF.js WebGL backend.
- * Returns a ref to the segmenter (null until ready) plus ready/failed flags.
- */
 export function useBodySegmentation(enabled: boolean) {
-  const segmenterRef = useRef<BodySegmenter | null>(null)
+  const segmenterRef = useRef<ImageSegmenter | null>(null)
   const [modelReady, setModelReady] = useState(false)
   const [modelFailed, setModelFailed] = useState(false)
 

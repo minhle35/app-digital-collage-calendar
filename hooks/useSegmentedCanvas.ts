@@ -1,22 +1,21 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import type { BodySegmenter } from '@tensorflow-models/body-segmentation'
+import type { ImageSegmenter } from '@mediapipe/tasks-vision'
 
 const TARGET_FPS = 24
 const FRAME_INTERVAL = 1000 / TARGET_FPS
 
 /**
- * Runs a requestAnimationFrame loop that draws segmented (background-removed)
- * video frames onto a canvas. Falls back to raw video if the segmenter is
- * not yet ready or segmentation fails.
+ * Runs a requestAnimationFrame loop that draws background-removed video
+ * frames onto a canvas using MediaPipe confidence masks.
  *
- * The canvas content is always in natural (un-mirrored) orientation.
- * Apply CSS `scale-x-[-1]` to the canvas element for a mirror display.
+ * Canvas content is in natural (un-mirrored) orientation.
+ * Apply CSS `scale-x-[-1]` on the canvas element for a mirror selfie display.
  */
 export function useSegmentedCanvas(
   videoRef: React.RefObject<HTMLVideoElement | null>,
-  segmenterRef: React.RefObject<BodySegmenter | null>,
+  segmenterRef: React.RefObject<ImageSegmenter | null>,
   enabled: boolean,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -33,18 +32,12 @@ export function useSegmentedCanvas(
     let lastTime = 0
     let running = true
 
-    // Cache the toBinaryMask import — loaded once, reused every frame
-    let toBinaryMask: typeof import('@tensorflow-models/body-segmentation')['toBinaryMask'] | null = null
-    import('@tensorflow-models/body-segmentation').then((mod) => {
-      toBinaryMask = mod.toBinaryMask
-    })
-
     const drawRaw = (video: HTMLVideoElement) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     }
 
-    const loop = async (now: number) => {
+    const loop = (now: number) => {
       if (!running) return
       rafRef.current = requestAnimationFrame(loop)
 
@@ -54,7 +47,6 @@ export function useSegmentedCanvas(
       const video = videoRef.current
       if (!video || video.readyState < 2) return
 
-      // Keep canvas dimensions in sync with the video feed
       const vw = video.videoWidth || 640
       const vh = video.videoHeight || 480
       if (canvas.width !== vw || canvas.height !== vh) {
@@ -63,45 +55,37 @@ export function useSegmentedCanvas(
       }
 
       const segmenter = segmenterRef.current
-      if (!segmenter || !toBinaryMask) {
+      if (!segmenter) {
         drawRaw(video)
         return
       }
 
       try {
-        const segmentation = await segmenter.segmentPeople(video, {
-          multiSegmentation: false,
-          segmentBodyParts: false,
-        })
+        const result = segmenter.segmentForVideo(video, now)
+        const confidenceMask = result.confidenceMasks?.[0]
 
-        // Draw the raw video frame first
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        if (confidenceMask) {
+          // Draw raw video frame first
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-        if (segmentation.length > 0) {
-          // Build a binary mask:
-          //   foreground (person) → alpha 0   (keep these pixels)
-          //   background          → alpha 255 (erase these pixels)
-          const maskData = await toBinaryMask(
-            segmentation,
-            { r: 0, g: 0, b: 0, a: 0 },    // foreground: transparent → keep
-            { r: 0, g: 0, b: 0, a: 255 },   // background: opaque     → erase
-            false,
-            0.5,
-          )
+          // Read pixels + mask, then zero out background alpha
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          const pixels = imageData.data
+          const maskData = confidenceMask.getAsFloat32Array()
 
-          // Render mask to a temp canvas then composite with destination-out
-          const maskCanvas = document.createElement('canvas')
-          maskCanvas.width = canvas.width
-          maskCanvas.height = canvas.height
-          maskCanvas.getContext('2d')!.putImageData(maskData, 0, 0)
+          for (let i = 0; i < maskData.length; i++) {
+            // maskData[i]: 0 = background, 1 = person
+            pixels[i * 4 + 3] = Math.round(maskData[i] * 255)
+          }
 
-          ctx.globalCompositeOperation = 'destination-out'
-          ctx.drawImage(maskCanvas, 0, 0)
-          ctx.globalCompositeOperation = 'source-over'
+          ctx.putImageData(imageData, 0, 0)
+          result.close()
+        } else {
+          drawRaw(video)
+          result.close()
         }
       } catch {
-        // Segmentation error on this frame — fall back to raw video
         drawRaw(video)
       }
     }

@@ -20,6 +20,9 @@ importers:
       '@liveblocks/react':
         specifier: ^3.15.1
         version: 3.15.1(@types/json-schema@7.0.15)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react@19.2.4)
+      '@mediapipe/tasks-vision':
+        specifier: ^0.10.32
+        version: 0.10.32
       '@radix-ui/react-accordion':
         specifier: 1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -435,6 +438,9 @@ packages:
 
   '@mediapipe/selfie_segmentation@0.1.1675465747':
     resolution: {integrity: sha512-IxYxNhwE5VwOm52L1yoFWYLP7q9Pd+NJjzOC5tlepfvEGaY3o9hslhUrx9BgseqdfZtKSDtd/4NfCSMjNzQalA==}
+
+  '@mediapipe/tasks-vision@0.10.32':
+    resolution: {integrity: sha512-3tiAZnmKloYnRXYoO3dKltTUGnqeCwzC4lV03uY0vCsE+aveJTyEVQyZHOlQGQNsjK+gRHzkf9q08C99Qm2K0Q==}
 
   '@next/env@16.1.6':
     resolution: {integrity: sha512-N1ySLuZjnAtN3kFnwhAwPvZah8RJxKasD7x1f8shFqhncnWZn4JMfg37diLNuoHsLAlrDfM3g4mawVdtAG8XLQ==}
@@ -2133,6 +2139,8 @@ snapshots:
       - '@types/json-schema'
 
   '@mediapipe/selfie_segmentation@0.1.1675465747': {}
+
+  '@mediapipe/tasks-vision@0.10.32': {}
 
   '@next/env@16.1.6': {}
 
