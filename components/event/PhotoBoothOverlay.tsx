@@ -235,19 +235,22 @@ export function PhotoBoothOverlay({ onClose, selfName, canvasTheme }: PhotoBooth
             </div>
           ) : (
             <>
-              {/* Hidden video element — source for the segmentation loop */}
+              {/* Video element — kept rendered (not display:none) so the browser
+                  keeps decoding frames and readyState advances. Visually hidden
+                  behind the canvas via absolute positioning + zero size. */}
               <video
                 ref={videoRef}
                 autoPlay
                 muted
                 playsInline
-                className="hidden"
+                className="absolute opacity-0 pointer-events-none w-0 h-0"
               />
-              {/* Segmented canvas — mirrors for natural selfie feel */}
+              {/* Segmented canvas — mirrors for natural selfie feel.
+                  CSS `background` shows the backdrop wherever canvas alpha=0. */}
               <canvas
                 ref={segmentedCanvasRef}
                 className="w-full h-full object-cover scale-x-[-1]"
-                style={{ backgroundColor: selectedBackdrop.preview.startsWith('linear') ? 'transparent' : selectedBackdrop.preview }}
+                style={{ background: selectedBackdrop.preview }}
               />
             </>
           )}
