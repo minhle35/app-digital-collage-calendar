@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const id = crypto.randomUUID().replace(/-/g, '').slice(0, 8)
+  // 16 hex chars = 64 bits of entropy — collision-proof at any realistic scale
+  const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16)
   return NextResponse.json({ id })
 }
