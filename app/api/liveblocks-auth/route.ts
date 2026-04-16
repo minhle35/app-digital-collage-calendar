@@ -2,9 +2,11 @@ import { Liveblocks } from '@liveblocks/node'
 import { NextRequest, NextResponse } from 'next/server'
 import { createRateLimit, getIp } from '@/lib/rate-limit'
 
-const liveblocks = new Liveblocks({
-  secret: process.env.LIVEBLOCKS_SECRET_KEY!,
-})
+function getLiveblocks() {
+  return new Liveblocks({
+    secret: process.env.LIVEBLOCKS_SECRET_KEY!,
+  })
+}
 
 // 10 auth tokens per IP per minute 
 // each new tab/refresh costs one token; this blocks bots hammering the endpoint
@@ -33,6 +35,7 @@ export async function POST(request: NextRequest) {
   // Later: swap userId/userInfo for real auth session values
   const { room } = await request.json()
 
+  const liveblocks = getLiveblocks()
   const session = liveblocks.prepareSession(`guest-${crypto.randomUUID()}`, {
     userInfo: {
       name: 'Guest',
