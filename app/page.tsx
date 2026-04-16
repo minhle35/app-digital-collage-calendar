@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { MonthRangeDialog } from '@/components/MonthRangeDialog'
 
 const steps = [
   {
@@ -140,10 +141,11 @@ export default function LandingPage() {
             Create a free canvas
             <span aria-hidden className="text-[oklch(0.65_0.13_48)]">→</span>
           </Link>
-          <Link href="/planner/new" className={btnSecondary} style={btnStyle}>
-            Plan a month together
-            <span aria-hidden>→</span>
-          </Link>
+          <MonthRangeDialog
+            buttonLabel="Plan a month together →"
+            buttonClassName={btnSecondary}
+            buttonStyle={btnStyle}
+          />
           <span
             className="text-[11px] text-[oklch(0.6_0.025_55)] tracking-wide"
             style={{ fontFamily: 'var(--font-space-mono)' }}
@@ -324,9 +326,11 @@ export default function LandingPage() {
 
         {/* Planner CTA */}
         <div className="flex flex-col items-center gap-3 pt-2">
-          <Link href="/planner/new" className={btnSecondary} style={btnStyle}>
-            Start your monthly plan →
-          </Link>
+          <MonthRangeDialog
+            buttonLabel="Start your monthly plan →"
+            buttonClassName={btnSecondary}
+            buttonStyle={btnStyle}
+          />
           <p className="text-xs text-[oklch(0.6_0.025_55)]">
             You'll get a unique link — bookmark it or send it to yourself
           </p>
@@ -341,9 +345,11 @@ export default function LandingPage() {
           <Link href="/event/new" className={btnPrimary} style={btnStyle}>
             Create a canvas now →
           </Link>
-          <Link href="/planner/new" className={btnSecondary} style={btnStyle}>
-            Plan a month →
-          </Link>
+          <MonthRangeDialog
+            buttonLabel="Plan a month →"
+            buttonClassName={btnSecondary}
+            buttonStyle={btnStyle}
+          />
         </div>
         <p className="text-xs text-[oklch(0.6_0.025_55)] text-center">
           Both open instantly — no account, no download

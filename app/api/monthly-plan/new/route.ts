@@ -4,8 +4,8 @@ import { createRateLimit, createGlobalCap, getIp } from '@/lib/rate-limit'
 // 3 planner per IP per 2 hours 
 const perIpLimiter = createRateLimit({ limit: 3, windowMs: 2 * 60 * 60 * 1000 })
 
-// 50 planners total across all users for this instance
-const globalCap = createGlobalCap(50)
+// 5 planners total across all users 
+const globalCap = createGlobalCap(5)
 
 export async function POST(request: NextRequest) {
   if (!globalCap.check()) {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'per_ip_limit',
-        message: `You can create one planner every 2 hours. Try again in ${retryAfterMin} minute${retryAfterMin !== 1 ? 's' : ''}.`,
+        message: `You can create three planner every 2 hours. Try again in ${retryAfterMin} minute${retryAfterMin !== 1 ? 's' : ''}.`,
         retryAfter: retryAfterSec,
       },
       { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
